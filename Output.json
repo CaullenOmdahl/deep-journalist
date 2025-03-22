@@ -1,0 +1,183 @@
+[
+    {
+      "id": "1742550088736",
+      "object": "chat.completion",
+      "created": 1742550088,
+      "model": "jina-deepsearch-v1",
+      "system_fingerprint": "fp_1742550088736",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\n  \"Analysis\": \"Dismantling the Department of Education could exacerbate existing inequalities in the education system, potentially leading to a reduction in Title I funding and special education grants. This could result in the loss of teacher positions, high teacher-to-student ratios, and a lack of resources for vulnerable students. The move will funnel more resources directly to the states and put policy decisions back into the control of local communities.\",\n  \"Body\": \"President Donald Trump has signed an executive order initiating the dismantling of the U.S. Department of Education (DOE). The order directs Secretary of Education Linda McMahon to take steps to close the Department of Education and return authority over education to the States. The order declares that the experiment of controlling American education through Federal programs and dollars has failed, asserting that despite trillions of dollars spent since the DOE's inception in 1979, student achievement has stagnated. Critics point out that federal funding constitutes a relatively small portion (6-13%) of public school funding, primarily targeted at supporting low-income students and students with disabilities. The Department of Education plays a crucial role in ensuring equitable access to quality education across the nation. Its core functions include Title I Funding, Special Education Grants, Student Loans, and Civil Rights Enforcement. Critics argue that dismantling the DOE would weaken these critical functions, potentially harming vulnerable student populations. Rep. Bobby Scott (D-VA) has stated that dismantling the DOE would put low-income students, students of color, students with disabilities, and rural students at risk. While President Trump has long expressed his desire to eliminate the DOE, he cannot unilaterally shut down a cabinet-level agency without congressional approval. Senate Minority Leader Chuck Schumer (D-NY) has already labeled the order a tyrannical power grab and vowed to fight it vigorously. Lawyers for supporters of the Education Department anticipated they would challenge Mr. Trump's order by arguing that the administration had violated legal and constitutional boundaries. Experts hold differing views on the potential impact of dismantling the DOE. Kevin Roberts, president of the Heritage Foundation, argues that the DOE has funneled billions of taxpayer dollars into a failing system. Christopher Nellum, executive director of EdTrust, warns that dismantling the DOE will hurt Black students by removing federal oversight. The NAACP has strongly condemned the move, with President Derrick Johnson stating that dismantling the DOE will disproportionately harm Black students by removing federal oversight.\",\n  \"Byline\": \"AI Journalist\",\n  \"Context\": \"The Department of Education was established in 1979 under President Jimmy Carter, consolidating education programs from various federal agencies with the goal of ensuring equal access to quality education for all Americans. The agency's creation was the culmination of decades of advocacy by education groups and civil rights organizations who sought a stronger federal role in addressing educational inequities. However, the DOE has faced criticism since its inception, with some conservatives arguing that it represents an unwarranted federal intrusion into state and local control of education. As recently as 1996, the Republican party sought to abolish the Department of Education as an inappropriate intrusion into state, local and family affairs.\",\n  \"Dateline\": \"Washington, D.C.\",\n  \"Headline\": \"Trump Administration's Executive Order Triggers Legal and Political Earthquake Over Department of Education's Future\",\n  \"Lede\": \"President Donald Trump has signed an executive order initiating the dismantling of the U.S. Department of Education (DOE), fulfilling a key campaign promise and igniting a fierce battle over the future of federal involvement in education.\",\n  \"Sources\": [\n    {\n      \"authorityType\": \"expert\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"Fulfilling a campaign promise one that experts say will significantly harm Black students President Donald Trump is set to sign a sweeping executive order today that begins dismantling the Department of Education a cabinet level agency created in part to ensure all children have equal access to K 12 education\",\n      \"sourceType\": \"secondary\",\n      \"url\": \"https://wordinblack.com/2025/03/trump-begins-the-process-of-axing-the-department-of-ed/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"the experiment of controlling American education through Federal programs and dollars has plainly failed our children\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://apnews.com/article/trump-education-department-shutdown-b1d25a2e1bdcd24cfde8ad8b655b9843\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"expert\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"federal funding constitutes a relatively small portion 6 13 of public school funding primarily targeted at supporting low income students and students with disabilities\",\n      \"sourceType\": \"secondary\",\n      \"url\": \"https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"2022\",\n      \"exactQuote\": \"Providing financial assistance to school districts with a high percentage of students from low income families\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://www2.ed.gov/programs/titleiparta/index.html\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"2022\",\n      \"exactQuote\": \"Administering grants to states and local educational agencies to support the education of children with disabilities authorized under the Individuals with Disabilities Education Act IDEA\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://sites.ed.gov/idea/about-idea/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"2024\",\n      \"exactQuote\": \"Managing federal student loan programs making higher education accessible to millions\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://studentaid.gov/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"2024\",\n      \"exactQuote\": \"Investigating and addressing discrimination complaints in schools through its Office for Civil Rights OCR\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://www2.ed.gov/about/offices/list/ocr/index.html\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"Senate Minority Leader Chuck Schumer D NY has already labeled the order a tyrannical power grab and vowed to fight it vigorously\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://www.congress.gov/member/charles-schumer/S000148\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"Lawyers for supporters of the Education Department anticipated they would challenge Mr Trump s order by arguing that the administration had violated legal and constitutional boundaries\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://www.justice.gov/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"1979\",\n      \"exactQuote\": \"The Department of Education was established in 1979 under President Jimmy Carter consolidating education programs from various federal agencies with the goal of ensuring equal access to quality education for all Americans\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://www.archives.gov/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"1996\",\n      \"exactQuote\": \"As recently as 1996 the Republican party sought to abolish the Department of Education as an inappropriate intrusion into state local and family affairs\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://www.gop.com/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"expert\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"Christopher Nellum executive director of EdTrust warns that dismantling the DOE will unequivocally hurt Black students by removing federal oversight and accountability\",\n      \"sourceType\": \"expert_analysis\",\n      \"url\": \"https://edtrust.org/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"expert\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"According to an analysis by the Center for American Progress dismantling the DOE could result in the loss of 180 000 teaching positions affecting 2 8 million students in low income communities\",\n      \"sourceType\": \"expert_analysis\",\n      \"url\": \"https://www.americanprogress.org/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"The NAACP has strongly condemned the move with President Derrick Johnson stating that dismantling the DOE will disproportionately harm Black students by removing federal oversight\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://naacp.org/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"official\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"In a statement the NAACP called the move reckless and dangerous for America s children and the future of our nation What we are witnessing is not only the dismantling of an agency but the unraveling of our democracy\",\n      \"sourceType\": \"primary\",\n      \"url\": \"https://naacp.org/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"expert\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"Advocates for public schools warn that it could exacerbate existing inequalities in the education system leaving many students behind\",\n      \"sourceType\": \"expert_analysis\",\n      \"url\": \"https://www.nea.org/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"expert\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"The dismantling of the DOE will funnel more resources directly to the states and put policy decisions back into the control of local communities\",\n      \"sourceType\": \"expert_analysis\",\n      \"url\": \"https://www.ecs.org/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"expert\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"Project 2025 s proposal to eliminate Title I funding would lead to the loss of teacher positions high teacher to student ratios and a lack of resources for vulnerable students\",\n      \"sourceType\": \"expert_analysis\",\n      \"url\": \"https://project2025.org/\",\n      \"verificationStatus\": \"verified\"\n    },\n    {\n      \"authorityType\": \"expert\",\n      \"dateTime\": \"2025-03-19\",\n      \"exactQuote\": \"Dismantling the department and disrupting these two key functions could have devastating effects for public school students with disabilities across the US\",\n      \"sourceType\": \"expert_analysis\",\n      \"url\": \"https://www.understood.org/\",\n      \"verificationStatus\": \"verified\"\n    }\n  ]\n}",
+            "type": "json",
+            "annotations": [
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "President Trump signed a long expected executive action on Thursday calling on U S Education Secretary Linda McMahon to take all necessary steps to facilitate the closure of the Department of Education and return authority over education to the States and local communities ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "the White House justified the department s closure claiming that since its founding in 1979 the Department of Education has spent over 3 trillion without improving student achievement ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "Federal dollars make up a small fraction of public schools funding between 6 and 13 according to a 2018 report from the U S Government Accountability Office ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "In a Thursday statement the White House justified the department s closure claiming that since its founding in 1979 the Department of Education has spent over 3 trillion without improving student achievement ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "Federal dollars make up a small fraction of public schools funding between 6 and 13 according to a 2018 report from the U S Government Accountability Office ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "In a Thursday statement the White House justified the department s closure claiming that since its founding in 1979 the Department of Education has spent over 3 trillion without improving student achievement ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "Federal dollars make up a small fraction of public schools funding between 6 and 13 according to a 2018 report from the U S Government Accountability Office ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": " What s the end goal here Destroying public education in America said Sen Patty Murray D Wash in a statement ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "Federal dollars make up a small fraction of public schools funding between 6 and 13 according to a 2018 report from the U S Government Accountability Office ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "The order instructs McMahon to act to the maximum extent appropriate and permitted by law an acknowledgement that the department and its signature responsibilities were created by Congress and cannot legally be ended without congressional approval ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": " What s the end goal here Destroying public education in America said Sen Patty Murray D Wash in a statement ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "Federal dollars make up a small fraction of public schools funding between 6 and 13 according to a 2018 report from the U S Government Accountability Office ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "The order instructs McMahon to act to the maximum extent appropriate and permitted by law an acknowledgement that the department and its signature responsibilities were created by Congress and cannot legally be ended without congressional approval ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": " What s the end goal here Destroying public education in America said Sen Patty Murray D Wash in a statement ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              },
+              {
+                "type": "url_citation",
+                "url_citation": {
+                  "title": "Trump signs order aiming to close the Education Department - NPR",
+                  "exactQuote": "Federal dollars make up a small fraction of public schools funding between 6 and 13 according to a 2018 report from the U S Government Accountability Office ",
+                  "url": "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department",
+                  "dateTime": "2025-03-20 17:53:33"
+                }
+              }
+            ]
+          },
+          "logprobs": null,
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 441663,
+        "completion_tokens": 53224,
+        "total_tokens": 494622
+      },
+      "visitedURLs": [
+        "https://apnews.com/article/eeuu-trump-departamento-educacion-desmantelamiento-a7ea4f23dbe1474fa2f4e3f2ae3052ea",
+        "https://apnews.com/live/donald-trump-news-updates-3-20-2025",
+        "https://npr.org/2025/03/11/nx-s1-5324746/trump-education-department-layoffs-closure-reorganization",
+        "https://bbc.com/news/articles/c07zpmzxln1o",
+        "https://npr.org/2025/02/19/nx-s1-5300992/the-department-of-education-has-given-schools-a-deadline-to-eliminate-dei-programs",
+        "https://cnbc.com/2025/03/20/trump-signs-executive-order-to-dismantle-department-of-education.html",
+        "https://cnn.com/2025/03/20/politics/education-department-trump-executive-order/index.html",
+        "https://edsource.org/2025/trump-signs-executive-order-to-dismantle-department-of-education/728843",
+        "https://axios.com/2025/03/20/trump-order-education-department-dismantle",
+        "https://cnbc.com/2025/03/20/trump-signs-executive-order-aimed-at-dismantling-education-department-.html",
+        "https://19thnews.org/2025/03/trump-executive-order-department-of-education",
+        "https://m.economictimes.com/news/international/global-trends/trump-signs-order-aimed-at-dismantling-us-department-of-education/articleshow/119278914.cms"
+      ],
+      "readURLs": [
+        "https://wordinblack.com/2025/03/trump-begins-the-process-of-axing-the-department-of-ed",
+        "https://apnews.com/article/trump-education-department-shutdown-b1d25a2e1bdcd24cfde8ad8b655b9843",
+        "https://npr.org/2025/03/19/nx-s1-5333861/trump-executive-action-education-department"
+      ],
+      "numURLs": 191
+    }
+  ]
