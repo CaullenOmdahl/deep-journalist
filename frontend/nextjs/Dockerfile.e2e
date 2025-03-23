@@ -1,0 +1,18 @@
+FROM mcr.microsoft.com/playwright:v1.51.1-jammy
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the application
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Run tests
+CMD ["npm", "run", "test:e2e"] 

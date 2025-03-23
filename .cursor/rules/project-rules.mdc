@@ -1,0 +1,193 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Deep-Journalist Project Rules
+
+Deep-Journalist is an AI-powered journalistic research assistant designed to elevate the quality of news reporting. It transforms existing news stories into comprehensive, well-researched, and unbiased articles backed by primary sources. The project uses FastAPI for the backend, Playwright for web scraping, and Gemini AI for analysis.
+
+## Core Mission
+
+- Combat misinformation and declining journalistic standards
+- Analyze existing news stories for bias and unsupported claims
+- Conduct thorough research to verify facts and identify primary sources
+- Rewrite articles with proper citations and balanced perspectives
+
+## Project Structure
+
+```
+deep-journalist/
+├── app/                    # Main application code
+│   ├── api/               # FastAPI endpoints and server
+│   │   ├── routes/       # Article processing and analysis routes
+│   │   └── middleware/   # Authentication and logging middleware
+│   ├── analysis/          # Article analysis components
+│   │   ├── bias/         # Bias detection using Gemini AI
+│   │   └── fact_check/   # Source verification and fact checking
+│   ├── core/              # Core business logic
+│   │   ├── gemini/       # Gemini AI integration for analysis
+│   │   └── config/       # Environment and feature configuration
+│   ├── models/            # Data models and schemas
+│   │   ├── api/          # API request/response models
+│   │   └── domain/       # Article and analysis domain models
+│   ├── scrapers/          # Web scraping infrastructure
+│   │   ├── bypass/       # Paywall bypass implementations
+│   │   └── extractors/   # Content and metadata extraction
+│   └── utils/             # Utility functions
+│       ├── logging/      # Structured logging with rotation
+│       └── validation/   # Input validation and sanitization
+├── scripts/               # Maintenance and deployment scripts
+├── tests/                 # Comprehensive test suite
+├── .env.example           # Environment variable templates
+├── .gitignore            # Git ignore patterns
+├── LICENSE               # MIT license
+├── MANIFEST.in           # Package manifest
+├── README.md            # Project documentation
+├── requirements.txt     # Project dependencies
+└── setup.py            # Package setup
+```
+
+## Quality Standards
+
+1. Source Requirements
+   - Minimum 80% primary sources
+   - At least 3 independent sources per major claim
+   - No unverified claims in final output
+   - Clear distinction between fact and opinion
+
+2. Bias Control
+   - Neutral language scoring > 90%
+   - Balanced perspective representation
+   - Complete context inclusion
+   - Transparent source diversity
+
+3. Performance Targets
+   - Research completion: < 10 minutes
+   - Source verification: < 30 seconds per source
+   - Story generation: < 5 minutes
+   - Real-time fact-checking updates
+
+## Dependency Rules
+
+1. `app/core/gemini/` is the central point for all AI analysis
+   - All bias detection must use this interface
+   - All fact checking must be verified through this module
+   - Consistent prompt templates and response handling
+
+2. Module Dependencies
+   - `app/analysis/` can only use Gemini AI through `app/core/gemini/`
+   - `app/api/` can import from any other app module
+   - `app/scrapers/` should only depend on `app/utils/`
+   - No circular dependencies allowed
+   - All external API calls must go through `app/core/gemini/`
+   - All configuration must be defined in `app/core/config/`
+
+## File Naming Rules
+
+1. Use snake_case for Python files
+2. Use PascalCase for class names
+3. Use UPPERCASE for constants
+4. Test files must start with test_
+5. Interface files should end with _interface
+6. Analysis modules should end with _analyzer
+7. Scraper modules should end with _scraper
+
+## Code Organization Rules
+
+1. Module Structure
+   - Each module must have an __init__.py
+   - Each feature should have its own directory
+   - Keep files focused and small (< 500 lines)
+   - Use type hints for all function parameters
+   - Document all public functions and classes
+
+2. Error Handling
+   - Define custom exceptions for each module
+   - Provide detailed error messages
+   - Log all errors with context
+   - Implement graceful fallbacks
+
+## Development Guidelines
+
+1. Code Quality
+   - Follow PEP 8 style guide
+   - Use async/await for I/O operations
+   - Handle errors gracefully
+   - Log important operations with context
+   - Write unit tests for new features
+
+2. Security
+   - Keep dependencies minimal and updated
+   - Use environment variables for sensitive data
+   - Validate and sanitize all inputs
+   - Implement rate limiting
+   - Follow OWASP security practices
+
+3. Performance
+   - Implement caching where appropriate
+   - Use connection pooling
+   - Optimize database queries
+   - Monitor memory usage
+   - Profile slow operations
+
+## Testing Requirements
+
+1. Coverage Requirements
+   - All new features must have tests
+   - Maintain test coverage above 80%
+   - Use pytest for testing
+   - Mock external services in tests
+   - Use fixtures for test data
+
+2. Test Types
+   - Unit tests for individual components
+   - Integration tests for module interactions
+   - End-to-end tests for full workflows
+   - Performance tests for critical paths
+   - Security tests for vulnerabilities
+
+## Documentation Rules
+
+1. Code Documentation
+   - Keep README.md up to date
+   - Document all API endpoints
+   - Include usage examples
+   - Explain
+ nci
+ ll ch cument analysis methodology
+   - Track source verification process
+   - Log bias detection results
+   - Maintain research audit trails
+
+   # Deep-Journalist Project Rules
+
+## Development Guidelines
+
+1. Code Quality
+   - Follow PEP 8 style guide
+   - Use async/await for I/O operations
+   - Handle errors gracefully
+   - Log important operations with context
+   - Write unit tests for new features
+
+2. Security
+   - Keep dependencies minimal and updated
+   - Use environment variables for sensitive data
+   - Validate and sanitize all inputs
+   - Implement rate limiting
+   - Follow OWASP security practices
+
+3. Performance
+   - Implement caching where appropriate
+   - Use connection pooling
+   - Optimize database queries
+   - Monitor memory usage
+   - Profile slow operations
+
+4. Dependency Management
+   - Never update package versions manually in requirements.txt
+   - Always install packages first and use pip freeze to capture exact versions
+   - Test compatibility before updating any package
+   - Document any known version conflicts or constraints
+   - Maintain a separate requirements-dev.txt for development dependencies
