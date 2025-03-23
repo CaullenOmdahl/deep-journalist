@@ -1,98 +1,148 @@
 # Deep-Journalist
 
-Deep-Journalist is an AI-powered journalistic research assistant designed to elevate the quality of news reporting by transforming existing news stories into comprehensive, well-researched, and unbiased articles backed by primary sources.
+An AI-powered journalistic research assistant designed to elevate the quality of news reporting. Deep-Journalist transforms existing news stories into comprehensive, well-researched, and unbiased articles backed by primary sources.
 
-## Features
+## Project Structure
 
-- **Story Input and Analysis**
-  - Direct URL to news article
-  - Copy-pasted article content
-  - Multiple article URLs for cross-reference
-  - Bias detection
-  - Claim identification
-  - Source evaluation
-  - Missing context detection
+```
+deep-journalist/
+├── api/                    # FastAPI backend
+├── frontend/              # Next.js frontend
+│   └── nextjs/           # Next.js application
+└── e2e/                  # End-to-end tests
+```
 
-- **Comprehensive Research**
-  - Primary source discovery
-  - Multi-source verification
-  - Timeline reconstruction
-  - Context gathering
-  - Expert opinion collection
+## Prerequisites
 
-- **Fact Verification**
-  - Statement extraction
-  - Source attribution
-  - Verification status tracking
-  - Source credibility assessment
-  - Bias detection
+- Docker and Docker Compose
+- Node.js 18+
+- Python 3.12+
 
-- **Journalistic Synthesis**
-  - Chronological organization
-  - Balanced perspective presentation
-  - Clear attribution of sources
-  - AP Style compliance
-  - Inverted pyramid structure
-
-## Installation
+## Getting Started
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/CaullenOmdahl/deep-journalist.git
+git clone https://github.com/yourusername/deep-journalist.git
 cd deep-journalist
 ```
 
-2. Install dependencies:
+2. Create environment files:
 ```bash
-pip install -r requirements.txt
+cp api/.env.example api/.env
+cp frontend/nextjs/.env.example frontend/nextjs/.env
 ```
 
-3. Install Chrome/Chromium browser if not already installed.
-
-4. Create a .env file with your configuration:
+3. Build and start the containers:
 ```bash
-cp .env.example .env
-# Edit .env with your settings
+docker-compose up --build
 ```
 
-## Usage
+The application will be available at:
+- Frontend: http://localhost:3000
+- API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
 
-### API
+## Development
 
-Start the API server:
+### Frontend (Next.js)
+
+The frontend is built with:
+- Next.js 14
+- TypeScript
+- Tailwind CSS
+- Playwright for e2e testing
+
+Key features:
+- SWC compilation for faster builds
+- Hot Module Replacement (HMR)
+- Responsive design
+- Type-safe API integration
+
+### Backend (FastAPI)
+
+The backend uses:
+- FastAPI
+- Python 3.12
+- Google Gemini AI
+- Redis for caching
+
+Key features:
+- Async/await for optimal performance
+- OpenAPI documentation
+- Type hints throughout
+- Structured logging
+
+## Testing
+
+### End-to-End Tests
+
+Run e2e tests with:
 ```bash
-uvicorn app.main:app --reload
+docker-compose run e2e npm test
 ```
 
-API endpoints:
-- POST /api/v1/analyze - Analyze article(s) from URL or text
-- POST /api/v1/research - Conduct deep research on a topic
-- POST /api/v1/verify - Verify specific claims
-- POST /api/v1/synthesize - Generate final article
+Tests cover:
+- User journey flows
+- API integration
+- Error handling
+- Performance metrics
 
-### CLI
+### Frontend Tests
 
+Run frontend tests:
 ```bash
-python -m deep_journalist analyze --url "https://example.com/article"
-python -m deep_journalist research --topic "Topic to research"
+cd frontend/nextjs
+npm test
 ```
 
-## Configuration
+### Backend Tests
 
-Key settings in .env:
-- OPENAI_API_KEY - Your OpenAI API key
-- MODEL_NAME - GPT model to use (default: gpt-4-1106-preview)
-- CHROME_PATH - Path to Chrome/Chromium executable
-- MIN_PRIMARY_SOURCES - Minimum number of primary sources (default: 3)
-- NEUTRAL_SCORE_THRESHOLD - Minimum neutral language score (default: 0.9)
+Run backend tests:
+```bash
+cd api
+pytest
+```
+
+## Docker Configuration
+
+The project uses Docker Compose with three main services:
+1. `frontend`: Next.js application
+2. `api`: FastAPI backend
+3. `e2e`: Playwright tests
+
+Additional services:
+- `redis`: For caching and session management
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch
+2. Create a feature branch
 3. Commit your changes
 4. Push to the branch
-5. Create a new Pull Request
+5. Create a Pull Request
+
+## Code Quality Standards
+
+- Follow PEP 8 for Python code
+- Use ESLint and Prettier for JavaScript/TypeScript
+- Maintain test coverage above 80%
+- Document all public APIs
+- Use type hints/TypeScript throughout
+
+## Performance Targets
+
+- Page load time < 3s
+- API response time < 500ms
+- Test suite execution < 5 minutes
+- Lighthouse score > 90
+
+## Security
+
+- Environment variables for sensitive data
+- Input validation and sanitization
+- Rate limiting on API endpoints
+- Regular dependency updates
+- HTTPS in production
 
 ## License
 
@@ -100,6 +150,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- Based on [gpt-researcher](https://github.com/assafelovic/gpt-researcher)
-- Uses [bypass-paywalls-chrome-clean](https://gitflic.ru/project/magnolia1234/bypass-paywalls-chrome-clean) for paywall bypass
-- Inspired by the need for more rigorous journalistic standards in the age of AI 
+- Google Gemini AI for powering the analysis
+- FastAPI for the efficient backend
+- Next.js team for the frontend framework
+- Playwright for reliable testing 
