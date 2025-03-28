@@ -1,10 +1,6 @@
 <div align="center">
 <h1>Deep Journalist</h1>
 
-![GitHub deployments](https://img.shields.io/github/deployments/u14app/gemini-next-chat/Production)
-![GitHub Release](https://img.shields.io/github/v/release/u14app/deep-research)
-![Docker Image Size](https://img.shields.io/docker/image-size/xiangfa/deep-research/latest)
-![Docker Pulls](https://img.shields.io/docker/pulls/xiangfa/deep-research)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 [![Gemini](https://img.shields.io/badge/Gemini-8E75B2?style=flat&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
@@ -54,11 +50,12 @@ Deep Journalist is a cutting-edge application built with Next.js 15, leveraging 
 ## 🚀 Getting Started
 
 1. Get [Gemini API Key](https://aistudio.google.com/app/apikey)
-2. One-click deployment of the project, you can choose to deploy to Vercel or Cloudflare
-
-   [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fu14app%2Fdeep-research&project-name=deep-journalist&repository-name=deep-journalist)
-
-   Currently the project supports deployment to Cloudflare, but you need to follow [How to deploy to Cloudflare Pages](./docs/How-to-deploy-to-Cloudflare-Pages.md) to do it.
+2. Clone this repository
+   
+   ```bash
+   git clone https://github.com/CaullenOmdahl/deep-journalist.git
+   cd deep-journalist
+   ```
 
 3. Start using
 
@@ -76,7 +73,7 @@ Follow these steps to get Deep Journalist up and running on your local browser.
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/u14app/deep-journalist.git
+   git clone https://github.com/CaullenOmdahl/deep-journalist.git
    cd deep-journalist
    ```
 
@@ -124,43 +121,25 @@ Follow these steps to get Deep Journalist up and running on your local browser.
 
 ## 🚢 Deployment
 
-### Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fu14app%2Fdeep-research&project-name=deep-journalist&repository-name=deep-journalist)
-
-### Cloudflare
-
-Currently the project supports deployment to Cloudflare, but you need to follow [How to deploy to Cloudflare Pages](./docs/How-to-deploy-to-Cloudflare-Pages.md) to do it.
-
 ### Docker
 
 > The Docker version needs to be 20 or above, otherwise it will prompt that the image cannot be found.
 
-> ⚠️ Note: Most of the time, the docker version will lag behind the latest version by 1 to 2 days, so the "update exists" prompt will continue to appear after deployment, which is normal.
-
 ```bash
-docker pull xiangfa/deep-journalist:latest
-docker run -d --name deep-journalist -p 3333:3000 xiangfa/deep-journalist
+# Build your own docker image
+docker build -t deep-journalist .
+docker run -d --name deep-journalist-app -p 3000:3000 deep-journalist
 ```
 
 You can also specify additional environment variables:
 
 ```bash
-docker run -d --name deep-journalist \
-   -p 3333:3000 \
+docker run -d --name deep-journalist-app \
+   -p 3000:3000 \
    -e GOOGLE_GENERATIVE_AI_API_KEY=AIzaSy... \
    -e ACCESS_PASSWORD=your-password \
-   xiangfa/deep-journalist
+   deep-journalist
 ```
-
-or build your own docker image:
-
-```bash
-docker build -t deep-journalist .
-docker run -d --name deep-journalist -p 3333:3000 deep-journalist
-```
-
-If you need to specify other environment variables, please add `-e key=value` to the above command to specify it.
 
 Deploy using `docker-compose.yml`:
 
@@ -168,24 +147,33 @@ Deploy using `docker-compose.yml`:
 version: '3.9'
 services:
    deep-journalist:
-      image: xiangfa/deep-journalist
-      container_name: deep-journalist
+      build:
+        context: .
+        dockerfile: Dockerfile
+      image: deep-journalist
+      container_name: deep-journalist-app
       environment:
          - GOOGLE_GENERATIVE_AI_API_KEY=AIzaSy...
          - ACCESS_PASSWORD=your-password
       ports:
-         - 3333:3000
+         - 3000:3000
 ```
 
-or build your own docker compose:
+To start the container using Docker Compose:
 
 ```bash
-docker compose -f docker-compose.yml build
+docker compose up -d
+```
+
+To build and start:
+
+```bash
+docker compose up -d --build
 ```
 
 ### Static Deployment
 
-You can also build a static page version directly, and then upload all files in the `out` directory to any website service that supports static pages, such as Github Page, Cloudflare, Vercel, etc..
+You can also build a static page version directly, and then upload all files in the `out` directory to any website service that supports static pages.
 
 ```bash
 pnpm build:export
@@ -246,7 +234,7 @@ Deep Journalist is released under the [MIT License](LICENSE). This license allow
 - [Next.js](https://nextjs.org/) - The React framework for building performant web applications.
 - [Shadcn UI](https://ui.shadcn.com/) - Beautifully designed components that helped streamline the UI development.
 - [Google Gemini](https://ai.google.dev/gemini-api) - Powering the intelligent journalistic capabilities.
-- [Deep Research](https://github.com/u14app/deep-research) - The foundation project that inspired this journalistic adaptation.
+- Deep Research - The foundation project that inspired this journalistic adaptation.
 
 ## 🤝 Contributing
 
@@ -261,4 +249,4 @@ For major changes, please open an issue first to discuss your proposed changes.
 
 ## ✉️ Contact
 
-If you have any questions, suggestions, or feedback, please create a new [issue](https://github.com/u14app/deep-journalist/issues).
+If you have any questions, suggestions, or feedback, please create a new [issue](https://github.com/CaullenOmdahl/deep-journalist/issues).

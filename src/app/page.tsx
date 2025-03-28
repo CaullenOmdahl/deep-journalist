@@ -59,7 +59,7 @@ function Home() {
           <FinalReport />
         </main>
         <footer className="my-4 text-center text-sm text-gray-600 print:hidden">
-          <a href="https://github.com/u14app/" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/CaullenOmdahl/deep-journalist" target="_blank" rel="noopener noreferrer">
             {t("copyright", {
               name: "Deep Journalist",
             })}
@@ -401,7 +401,7 @@ function Home() {
           Deep Journalist is committed to supporting ethical journalism and advancing the profession's highest standards.
         </p>
         <p className="text-sm mt-2">
-          <a href="https://github.com/u14app/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+          <a href="https://github.com/CaullenOmdahl/deep-journalist" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
             {t("copyright", {
               name: "Deep Journalist",
             })}
