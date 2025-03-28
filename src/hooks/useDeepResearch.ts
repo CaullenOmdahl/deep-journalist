@@ -155,6 +155,8 @@ function useDeepResearch() {
     const plimit = Plimit(1);
     const searchModel = "gemini-2.0-flash-exp";
     
+    console.log("Starting search tasks for queries:", queries.map(q => q.query));
+    
     for await (const item of queries) {
       await plimit(async () => {
         // Check if model is in cooldown
@@ -171,6 +173,8 @@ function useDeepResearch() {
         try {
           // Track the request
           rateLimiter.trackRequest(searchModel);
+          
+          console.log(`Processing search task: ${item.query}`);
           
           const searchResult = streamText({
             model: provider(searchModel, { useSearchGrounding: true }),
@@ -202,20 +206,31 @@ function useDeepResearch() {
               console.log("reasoning", part.textDelta);
             } else if (part.type === "source") {
               // Process source with enhanced metadata
+              console.log("Received source:", part.source);
+              
+              if (!part.source.url) {
+                console.warn("Received source without URL, skipping:", part.source);
+                continue;
+              }
+              
               const enhancedSource: Source = {
                 ...part.source,
-                sourceType: "secondary", // Default type
-                id: `source-${sources.length + 1}`
+                sourceType: part.source.sourceType || "secondary", // Default type
+                id: `source-${Date.now()}-${sources.length + 1}`
               };
+              console.log("Enhanced source created:", enhancedSource);
               sources.push(enhancedSource);
+              console.log("Sources array now has", sources.length, "sources");
               
               // Parse JSON data from content to extract source metadata if available
               try {
                 const sourceData = parsePartialJson(removeJsonMarkdown(content));
+                console.log("Parsed source data:", sourceData);
                 if (sourceData.state === "successful-parse" && sourceData.value) {
                   sourcesData = sourceData.value;
                   // Match source metadata with URL
                   const matchingSourceData = sourcesData.find((s: any) => s.url === enhancedSource.url);
+                  console.log("Matching source data found:", matchingSourceData);
                   if (matchingSourceData) {
                     enhancedSource.sourceType = matchingSourceData.sourceType || "secondary";
                     enhancedSource.credibilityScore = matchingSourceData.credibilityScore;
@@ -223,6 +238,7 @@ function useDeepResearch() {
                     enhancedSource.publicationDate = matchingSourceData.publicationDate;
                     enhancedSource.authorName = matchingSourceData.authorName;
                     enhancedSource.publisherName = matchingSourceData.publisherName;
+                    console.log("Updated enhanced source with metadata:", enhancedSource);
                   }
                 }
               } catch (e) {
@@ -231,7 +247,19 @@ function useDeepResearch() {
             }
           }
           
-          taskStore.updateTask(item.query, { state: "completed", sources });
+          console.log(`Task complete: ${item.query}. Found ${sources.length} sources.`);
+          
+          // Make sure all sources have titles
+          const processedSources = sources.map(source => {
+            if (!source.title) {
+              source.title = source.url;
+            }
+            return source;
+          });
+          
+          console.log("Processed sources ready for update:", processedSources);
+          taskStore.updateTask(item.query, { state: "completed", sources: processedSources });
+          console.log("Task updated with sources:", item.query);
         } catch (error) {
           if (isRateLimitError(error)) {
             rateLimiter.handleRateLimitError(searchModel, error);
@@ -248,6 +276,8 @@ function useDeepResearch() {
         return content;
       });
     }
+    
+    console.log("All search tasks completed");
   }
 
   async function reviewSearchResult() {

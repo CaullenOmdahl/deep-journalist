@@ -40,7 +40,7 @@ import { assessDomainReputation, SourceType } from "@/utils/domain-reputation";
 import { extractDomainFromUrl } from "@/utils/url-extractor";
 
 interface SourcesPanelProps {
-  sources?: SearchTask[];
+  sources?: Source[];
   onRemoveSource?: (id: string) => void;
   onUpdateSourceCategory?: (id: string, category: SourceType) => void;
 }
@@ -55,17 +55,36 @@ export default function SourcesPanel({
   const [activeTab, setActiveTab] = useState<SourceType | "all">("all");
   const [sortBy, setSortBy] = useState<"credibility" | "date">("credibility");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [filteredSources, setFilteredSources] = useState<SearchTask[]>([]);
+  const [filteredSources, setFilteredSources] = useState<Source[]>([]);
+  
+  // Function to normalize bias assessment strings to our expected categories
+  const normalizeBiasAssessment = (bias: string | undefined): 'left' | 'center-left' | 'center' | 'center-right' | 'right' | 'unknown' => {
+    if (!bias) return 'unknown';
+    
+    const lowerBias = bias.toLowerCase();
+    
+    if (lowerBias.includes('left') && !lowerBias.includes('center')) return 'left';
+    if (lowerBias.includes('center-left') || (lowerBias.includes('center') && lowerBias.includes('left'))) return 'center-left';
+    if (lowerBias.includes('center') && !lowerBias.includes('left') && !lowerBias.includes('right')) return 'center';
+    if (lowerBias.includes('center-right') || (lowerBias.includes('center') && lowerBias.includes('right'))) return 'center-right';
+    if (lowerBias.includes('right') && !lowerBias.includes('center')) return 'right';
+    if (lowerBias.includes('neutral')) return 'center';
+    
+    return 'unknown';
+  };
   
   useEffect(() => {
+    // Add debug logging
+    console.log("SourcesPanel received sources:", sources);
+    
     // Apply filtering and sorting
-    let filtered = [...sources];
+    let filtered = [...(sources || [])];
     
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(source => 
-        source.title.toLowerCase().includes(query) || 
+        source.title?.toLowerCase().includes(query) || 
         source.url.toLowerCase().includes(query)
       );
     }
@@ -95,6 +114,7 @@ export default function SourcesPanel({
       }
     });
     
+    console.log("Filtered sources:", filtered);
     setFilteredSources(filtered);
   }, [sources, searchQuery, activeTab, sortBy, sortOrder]);
   
@@ -148,7 +168,9 @@ export default function SourcesPanel({
     
     sources.forEach(source => {
       if (source.biasAssessment) {
-        distribution[source.biasAssessment as keyof typeof distribution]++;
+        // Normalize text bias assessment to our categories
+        const normalizedBias = normalizeBiasAssessment(source.biasAssessment);
+        distribution[normalizedBias]++;
       } else {
         const domain = extractDomainFromUrl(source.url);
         const assessment = assessDomainReputation(domain);
@@ -337,7 +359,7 @@ export default function SourcesPanel({
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="capitalize">
-                            {source.biasAssessment || assessment?.bias || "unknown"}
+                            {normalizeBiasAssessment(source.biasAssessment) || assessment?.bias || "unknown"}
                           </Badge>
                         </TableCell>
                         <TableCell>

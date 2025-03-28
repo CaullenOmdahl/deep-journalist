@@ -27,6 +27,8 @@ Deep Journalist is a cutting-edge application built with Next.js 15, leveraging 
 - **Source Credibility Assessment:** Evaluates source reliability and potential bias, providing transparency about information quality.
 - **Multi-perspective Coverage:** Identifies and presents conflicting viewpoints for balanced reporting.
 - **Methodology Transparency:** Includes clear documentation of research methods, source verification processes, and limitations.
+- **Multi-language Translation:** Translate articles into 11 different languages while preserving formatting and structure.
+- **Social Media Integration:** Export content optimized for various platforms (Twitter/X, Facebook, LinkedIn, WhatsApp) with appropriate formatting and character limits.
 - **Multi-platform Support:** Supports rapid deployment to Vercel, Cloudflare and other platforms.
 - **Powered by Google Gemini:** Utilizes advanced Google Gemini models for accurate and insightful analysis.
 - **Local & Server API Support:** Offers flexibility with both local and server-side API calling options to suit your needs.
@@ -41,7 +43,9 @@ Deep Journalist is a cutting-edge application built with Next.js 15, leveraging 
 - [x] Support editing final article and search results
 - [x] Support multiple article formats (news, feature, investigative, explainer)
 - [x] Implement source credibility assessment
-- [ ] Support URL content extraction for article analysis
+- [x] Support URL content extraction for article analysis
+- [x] Add multi-language translation capabilities
+- [x] Implement social media export optimization
 - [ ] Add automated fact-checking against trusted databases
 - [ ] Implement timeline construction for complex stories
 - [ ] Create bias detection and neutralization algorithms
@@ -196,6 +200,26 @@ As mentioned in the "Getting Started" section, Deep Journalist utilizes the foll
 - `ACCESS_PASSWORD`
 
 These variables are **only required if you intend to use the server-side API calling functionality.** For local API calls, no configuration is necessary beyond setting up the project.
+
+## 🔌 API Reference
+
+Deep Journalist provides several API endpoints for various functionalities:
+
+### Server Settings
+- **GET `/api/settings`**: Returns server environment variables needed by the client (API key, proxy URL, access password).
+
+### Google AI Model Endpoints
+- **GET `/api/models`**: Retrieves a list of available Google Gemini AI models using server-side API key.
+- **GET `/api/mock/models`**: Provides mock model data for development and testing purposes.
+- **GET/POST/PUT/DELETE `/api/ai/google/[...slug]`**: Proxy endpoint for Google Generative AI API calls with added security and CORS headers. Routes requests to Google's API with appropriate authentication.
+
+### URL Content Extraction
+- **POST `/api/extract-url`**: Extracts content from a provided URL, avoiding CORS issues by handling the request server-side. Returns structured data including title, author, content, and metadata.
+
+### Testing
+- **GET `/api/test`**: Tests the configured API keys, returning validation results for each key.
+
+All API endpoints include proper CORS headers and error handling. Server-side endpoints are protected by the configured `ACCESS_PASSWORD` when set.
 
 ## 🧠 Journalistic Principles
 

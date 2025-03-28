@@ -60,10 +60,29 @@ export const useTaskStore = create(
       setSuggestion: (suggestion) => set(() => ({ suggestion })),
       setQuery: (query) => set(() => ({ query })),
       updateTask: (query, task) => {
+        console.log(`Updating task ${query} with:`, task);
+        if (task.sources) {
+          console.log(`Task ${query} updating with ${task.sources.length} sources`);
+        }
+        
         const newTasks = get().tasks.map((item) => {
           return item.query === query ? { ...item, ...task } : item;
         });
-        set(() => ({ tasks: [...newTasks] }));
+        
+        set(() => {
+          console.log(`Setting tasks to ${newTasks.length} tasks`);
+          return { tasks: [...newTasks] };
+        });
+        
+        // Log the task after update to verify sources are set correctly
+        const updatedTask = get().tasks.find(t => t.query === query);
+        if (updatedTask) {
+          console.log(`Task ${query} after update:`, {
+            query: updatedTask.query,
+            sourcesCount: updatedTask.sources?.length || 0,
+            state: updatedTask.state
+          });
+        }
       },
       removeTask: (query) => {
         set((state) => ({
@@ -74,7 +93,13 @@ export const useTaskStore = create(
       setQuestion: (question) => set(() => ({ question })),
       updateQuestions: (questions) => set(() => ({ questions })),
       updateFinalReport: (report) => set(() => ({ finalReport: report })),
-      setSources: (sources) => set(() => ({ sources })),
+      setSources: (sources) => {
+        console.log(`Setting global sources array with ${sources.length} sources`);
+        set(() => ({ sources }));
+        
+        // Log the sources after update
+        console.log("Global sources after update:", get().sources.length);
+      },
       setFeedback: (feedback) => set(() => ({ feedback })),
       setArticleType: (articleType) => set(() => ({ articleType })),
       clear: () => set(() => ({ tasks: [] })),

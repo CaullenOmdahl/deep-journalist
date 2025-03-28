@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useTranslation } from "react-i18next";
-import { Download, FileText, Signature, FileEdit, AlertCircle, MessageSquare, AlertTriangle, Scale, Radar, Layout, X } from "lucide-react";
+import { Download, FileText, Signature, FileEdit, AlertCircle, MessageSquare, AlertTriangle, Scale, Radar, Layout, X, Globe, Check, Twitter, Facebook, Linkedin } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/Button";
 import {
@@ -63,6 +63,8 @@ function FinalReport() {
   const taskStore = useTaskStore();
   const { writeFinalReport } = useDeepResearch();
   const [isRewriting, setIsRewriting] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [targetLanguage, setTargetLanguage] = useState<string>("en");
   const [claims, setClaims] = useState<Claim[]>([]);
   const [claimText, setClaimText] = useState('');
   const [claimStatus, setClaimStatus] = useState<VerificationStatus>('unverified');
@@ -90,6 +92,21 @@ function FinalReport() {
       description: "800-1,200 words, contextual information about a topic"
     }
   };
+
+  // Languages for translation
+  const languages = [
+    { code: "en", name: "English" },
+    { code: "es", name: "Spanish" },
+    { code: "fr", name: "French" },
+    { code: "de", name: "German" },
+    { code: "it", name: "Italian" },
+    { code: "pt", name: "Portuguese" },
+    { code: "ru", name: "Russian" },
+    { code: "zh", name: "Chinese" },
+    { code: "ja", name: "Japanese" },
+    { code: "ar", name: "Arabic" },
+    { code: "hi", name: "Hindi" }
+  ];
 
   function getFinalReportContent() {
     const { finalReport, sources } = useTaskStore.getState();
@@ -212,6 +229,98 @@ function FinalReport() {
       description: "Click 'Rewrite as this type' to generate content based on this template."
     });
   };
+
+  async function handleTranslateContent() {
+    if (!taskStore.finalReport.trim()) {
+      toast.error("No content to translate");
+      return;
+    }
+    
+    try {
+      setIsTranslating(true);
+      
+      // Create a provider for the Google AI API
+      const provider = createProvider("google");
+      const translationModel = "gemini-2.0-flash-exp";
+      
+      toast.info(`Translating to ${languages.find(l => l.code === targetLanguage)?.name}...`);
+      
+      const result = await streamText({
+        model: provider(translationModel),
+        system: "You are a professional translator. Translate the provided content while preserving all formatting, headlines, and paragraph structure. Keep markdown syntax intact. Do not add any additional text or explanations.",
+        prompt: `Translate the following article to ${languages.find(l => l.code === targetLanguage)?.name}. Preserve all markdown formatting:\n\n${taskStore.finalReport}`,
+        experimental_transform: smoothStream(),
+        onError: (error) => {
+          console.error("Translation error:", error);
+          toast.error("Translation failed. Please try again later.");
+        },
+      });
+      
+      let translatedContent = "";
+      
+      for await (const textPart of result.textStream) {
+        translatedContent += textPart;
+        // You could update a preview state here if needed
+      }
+      
+      // Update the report with the translated content
+      taskStore.updateFinalReport(translatedContent);
+      toast.success(`Translation to ${languages.find(l => l.code === targetLanguage)?.name} completed`);
+      
+    } catch (error) {
+      console.error("Translation error:", error);
+      toast.error("Translation failed. Please try again later.");
+    } finally {
+      setIsTranslating(false);
+    }
+  }
+  
+  function getSocialMediaContent(platform: 'facebook' | 'twitter' | 'linkedin' | 'whatsapp'): string {
+    const { title } = taskStore;
+    const content = taskStore.finalReport;
+    
+    // Extract first paragraph for summary
+    const paragraphs = content.split('\n\n');
+    let firstPara = "";
+    for (const para of paragraphs) {
+      if (!para.startsWith('#') && para.trim().length > 20) {
+        firstPara = para;
+        break;
+      }
+    }
+    
+    // Extract title without markdown
+    const cleanTitle = title.replace(/^#\s+/, '').replace(/\*\*/g, '');
+    
+    switch (platform) {
+      case 'twitter':
+        // Twitter has 280 char limit
+        return `${cleanTitle}\n\n${firstPara.substring(0, Math.min(firstPara.length, 200))}${firstPara.length > 200 ? '...' : ''}\n\n#journalism #research`;
+        
+      case 'facebook':
+        // Facebook allows longer posts but still needs conciseness
+        // Extract first 3 paragraphs that aren't headers
+        const fbParagraphs = paragraphs.filter(p => !p.startsWith('#') && p.trim().length > 0).slice(0, 3);
+        return `${cleanTitle}\n\n${fbParagraphs.join('\n\n')}${paragraphs.length > 3 ? '\n\n(See full article for more...)' : ''}`;
+        
+      case 'linkedin':
+        // LinkedIn allows professional longer-form content
+        // Include title, intro paragraph, and bullet points if available
+        const bulletPoints = content.match(/[*-]\s.+/g) || [];
+        const bulletSection = bulletPoints.length > 0 
+          ? `\n\nKey points:\n${bulletPoints.slice(0, 5).join('\n')}${bulletPoints.length > 5 ? '\n...' : ''}` 
+          : '';
+          
+        return `${cleanTitle}\n\n${firstPara}${bulletSection}\n\n#journalism #research #professional`;
+        
+      case 'whatsapp':
+        // WhatsApp needs more compact content
+        return `*${cleanTitle}*\n\n${firstPara.substring(0, Math.min(firstPara.length, 300))}${firstPara.length > 300 ? '...' : ''}\n\n_Generated with Deep Journalist_`;
+        
+      default:
+        return content;
+    }
+  }
 
   return (
     <section className="p-4 border rounded-md mt-4 print:border-none">
@@ -367,12 +476,43 @@ The coming decade will be defined not by whether AI replaces journalists, but by
           </Popover>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={isTranslating}>
+                <Globe className="mr-2 h-4 w-4" />
+                {isTranslating ? "Translating..." : "Translate"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Select language</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {languages.map(lang => (
+                <DropdownMenuItem 
+                  key={lang.code}
+                  onClick={() => {
+                    setTargetLanguage(lang.code);
+                    if (lang.code !== "en") {
+                      handleTranslateContent();
+                    } else {
+                      toast.info("Already in English");
+                    }
+                  }}
+                >
+                  <span>{lang.name}</span>
+                  {lang.code === targetLanguage && (
+                    <Check className="ml-2 h-4 w-4" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <Download className="mr-2 h-4 w-4" />
                 {t("editor.export")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Document Formats</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() =>
                   downloadFile(
@@ -388,6 +528,81 @@ The coming decade will be defined not by whether AI replaces journalists, but by
               <DropdownMenuItem onClick={handleDownloadPDF}>
                 <Signature className="mr-2 h-4 w-4" />
                 <span>Print / Save as PDF</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Social Media</DropdownMenuLabel>
+              
+              <DropdownMenuItem 
+                onClick={() => {
+                  const content = getSocialMediaContent('twitter');
+                  navigator.clipboard.writeText(content);
+                  toast.success("Twitter post copied to clipboard");
+                }}
+              >
+                <Twitter className="mr-2 h-4 w-4" />
+                <span>X/Twitter</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem 
+                onClick={() => {
+                  const content = getSocialMediaContent('facebook');
+                  navigator.clipboard.writeText(content);
+                  toast.success("Facebook post copied to clipboard");
+                }}
+              >
+                <Facebook className="mr-2 h-4 w-4" />
+                <span>Facebook</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem 
+                onClick={() => {
+                  const content = getSocialMediaContent('linkedin');
+                  navigator.clipboard.writeText(content);
+                  toast.success("LinkedIn post copied to clipboard");
+                }}
+              >
+                <Linkedin className="mr-2 h-4 w-4" />
+                <span>LinkedIn</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem 
+                onClick={() => {
+                  const content = getSocialMediaContent('whatsapp');
+                  navigator.clipboard.writeText(content);
+                  toast.success("WhatsApp message copied to clipboard");
+                }}
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                <span>WhatsApp</span>
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+              
+              <DropdownMenuItem 
+                onClick={() => {
+                  const allFormats = {
+                    twitter: getSocialMediaContent('twitter'),
+                    facebook: getSocialMediaContent('facebook'),
+                    linkedin: getSocialMediaContent('linkedin'),
+                    whatsapp: getSocialMediaContent('whatsapp'),
+                    full: taskStore.finalReport
+                  };
+                  
+                  const formattedContent = `# Social Media Export for "${taskStore.title}"\n\n## Twitter/X Post\n\`\`\`\n${allFormats.twitter}\n\`\`\`\n\n## Facebook Post\n\`\`\`\n${allFormats.facebook}\n\`\`\`\n\n## LinkedIn Post\n\`\`\`\n${allFormats.linkedin}\n\`\`\`\n\n## WhatsApp Message\n\`\`\`\n${allFormats.whatsapp}\n\`\`\`\n\n## Full Article\n\`\`\`\n${allFormats.full}\n\`\`\`\n`;
+                  
+                  downloadFile(
+                    formattedContent,
+                    `${taskStore.title}_social_media_kit.md`,
+                    "text/markdown;charset=utf-8"
+                  );
+                  
+                  toast.success("Social Media Kit downloaded");
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                <span>Download Social Media Kit</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -215,6 +215,8 @@ function SearchResult() {
 
   // Get all sources from all tasks
   const allSources = taskStore.tasks.reduce((acc, task) => {
+    console.log("Task with sources:", task.query, "has sources:", task.sources ? task.sources.length : 0);
+    
     if (task.sources && task.sources.length > 0) {
       // Enhance sources with missing properties from domain reputation
       const enhancedSources = task.sources.map(source => {
@@ -236,6 +238,10 @@ function SearchResult() {
     }
     return acc;
   }, [] as Source[]);
+  
+  // Add debug logging for sources panel
+  console.log("All sources for sources panel:", allSources);
+  console.log("Total sources count:", allSources.length);
 
   useLayoutEffect(() => {
     const crepe = new Crepe({
@@ -498,11 +504,11 @@ function SearchResult() {
             <TabsContent value="timeline">
               <div className="space-y-4">
                 <TimelineVisualizer 
-                  sources={taskStore.tasks}
+                  sources={allSources}
                   mainContent={taskStore.finalReport}
                 />
                 
-                {taskStore.tasks.length === 0 && (
+                {allSources.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     No sources found. Start your research to generate a timeline.
                   </div>
