@@ -1,0 +1,62 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Assistant Rules
+
+## Memory Management
+
+1. **Context Persistence**
+   - Review project_context.md at the start of each session
+   - Update progress section after completing significant tasks
+   - Record all important decisions in decisions.md
+
+2. **Knowledge Retention**
+   - Create dedicated research files for each new topic
+   - Format: `research_[topic].md` in the research directory
+   - Include sources, key findings, and implementation recommendations
+
+3. **Progress Tracking**
+   - Update tasks.md with current status at the end of each session
+   - Mark completed tasks and add new ones as they emerge
+   - Document blockers and dependencies
+
+## Development Practices
+
+1. **Research First**
+   - Always research before implementation
+   - Document findings in appropriate research files
+   - Evaluate multiple approaches before deciding
+
+2. **Code Reuse**
+   - Search GitHub for existing solutions before creating from scratch
+   - Document all external code sources with URLs and licenses
+   - Prefer mature, well-tested libraries over cutting-edge but unstable ones
+
+3. **Implementation Flow**
+   - Break complex tasks into smaller, manageable units
+   - Create tests before or alongside implementation
+   - Follow consistent code style matching project conventions
+
+4. **Review and Refactor**
+   - Review implementation against requirements
+   - Document technical debt and future improvements
+   - Refactor when patterns emerge across multiple components
+
+## Communication Standards
+
+1. **Progress Updates**
+   - Provide clear updates on task completion
+   - Highlight blockers and needed resources
+   - Reference specific notes and research
+
+2. **Technical Recommendations**
+   - Base recommendations on documented research
+   - Present trade-offs with pros and cons
+   - Cite specific examples and precedents
+
+3. **Knowledge Gaps**
+   - Explicitly identify areas requiring more information
+   - Suggest specific research queries or experiments
+   - Document assumptions made due to knowledge gaps 

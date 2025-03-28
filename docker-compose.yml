@@ -1,48 +1,15 @@
-version: '3.8'
-
+version: "3.9"
 services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - redis
-
-  frontend:
+  deep-research:
     build:
-      context: ./frontend/nextjs
+      context: .
       dockerfile: Dockerfile
-      target: runner
-    ports:
-      - "3000:3000"
+    image: deep-research
+    container_name: deep-research
     environment:
-      - NEXT_PUBLIC_API_URL=http://api:8000
-      - NODE_ENV=production
-      - HOSTNAME=0.0.0.0
-      - PORT=3000
-    depends_on:
-      - api
-
-  e2e:
-    build:
-      context: ./frontend/nextjs
-      dockerfile: Dockerfile.e2e
-    environment:
-      - PLAYWRIGHT_TEST_BASE_URL=http://frontend:3000
-      - CI=1
-    depends_on:
-      - frontend
-      - api
-
-  redis:
-    image: redis:alpine
+      - ACCESS_PASSWORD=$ACCESS_PASSWORD
+      - GOOGLE_GENERATIVE_AI_API_KEY=$GOOGLE_GENERATIVE_AI_API_KEY
+      - API_PROXY_BASE_URL=$API_PROXY_BASE_URL
+      - HEAD_SCRIPTS=$HEAD_SCRIPTS
     ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-volumes:
-  redis_data: 
+      - "3333:3000"

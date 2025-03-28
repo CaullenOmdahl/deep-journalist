@@ -1,48 +1,48 @@
-# Use Python 3.12 slim image
-FROM python:3.12-slim
+FROM node:18-alpine AS base
 
-# Set working directory
+# Install dependencies only when needed
+FROM base AS deps
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat
+
 WORKDIR /app
 
-# Install system dependencies including Chrome and scikit-learn dependencies
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
-    && apt-get update \
-    && apt-get install -y \
-    google-chrome-stable \
-    build-essential \
-    python3-dev \
-    gfortran \
-    libopenblas-dev \
-    liblapack-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Install dependencies based on the preferred package manager
+COPY package.json pnpm-lock.yaml ./
+RUN yarn global add pnpm && pnpm install
 
-# Install setuptools first
-RUN pip install --no-cache-dir setuptools
-
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Install NLTK data required by TextBlob
-RUN python -m textblob.download_corpora
-
-# Copy application code
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p logs
+# Next.js collects completely anonymous telemetry data about general usage.
+# Learn more here: https://nextjs.org/telemetry
+# Uncomment the following line in case you want to disable telemetry during the build.
+ENV NEXT_TELEMETRY_DISABLED 1
 
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV CHROME_PATH=/usr/bin/google-chrome
-ENV CHROME_PROFILE_PATH=/tmp/chrome-profile
+# Disable eslint checking during build
+ENV ESLINT_DISABLE 1
 
-# Expose port
-EXPOSE 8000
+# Run build with more verbose output for debugging
+RUN NEXT_TELEMETRY_DISABLED=1 ESLINT_DISABLE=1 NODE_OPTIONS=--max-old-space-size=4096 yarn run build:docker
 
-# Run the application
-CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_PUBLIC_BUILD_MODE=standalone
+
+# Automatically leverage output traces to reduce image size
+# https://nextjs.org/docs/advanced-features/output-file-tracing
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+EXPOSE 3000
+
+# server.js is created by next build from the standalone output
+# https://nextjs.org/docs/pages/api-reference/next-config-js/output
+CMD ["node", "server.js"]
