@@ -468,7 +468,7 @@ function SearchResult() {
               </Form>
             </TabsContent>
             
-            <TabsContent value="sources">
+            <TabsContent value="sources" className="py-4">
               <div className="space-y-4">
                 <SourcesPanel 
                   sources={allSources}
@@ -481,23 +481,6 @@ function SearchResult() {
                     No sources found. Start your research to discover and analyze sources.
                   </div>
                 )}
-                
-                <div className="grid grid-cols-1 gap-4 max-sm:gap-2 w-full mt-4">
-                  <Button
-                    disabled={isWriting}
-                    onClick={() => handleWriteFinalReport()}
-                  >
-                    {isWriting ? (
-                      <>
-                        <LoaderCircle className="animate-spin" />
-                        <span>{status}</span>
-                        <small className="font-mono">{formattedTime}</small>
-                      </>
-                    ) : (
-                      t("research.common.writeReport")
-                    )}
-                  </Button>
-                </div>
               </div>
             </TabsContent>
             

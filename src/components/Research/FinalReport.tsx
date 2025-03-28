@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useTranslation } from "react-i18next";
-import { Download, FileText, Signature, FileEdit, AlertCircle, MessageSquare, AlertTriangle, Scale, Radar, Layout, X, Globe, Check, Twitter, Facebook, Linkedin } from "lucide-react";
+import { Download, FileText, Signature, FileEdit, AlertCircle, MessageSquare, AlertTriangle, Scale, Radar, Layout, X, Globe, Check, Twitter, Facebook, Linkedin, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/Button";
 import {
@@ -47,6 +47,7 @@ import JournalisticMetricsPanel from "./JournalisticMetricsPanel";
 import CitationManager from "./CitationManager";
 import StoryTracker from "./StoryTracker";
 import ArticleStructureEditor from "./ArticleStructureEditor";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const MilkdownEditor = dynamic(() => import("@/components/MilkdownEditor"));
 const Artifact = dynamic(() => import("@/components/Artifact"));
@@ -459,17 +460,33 @@ The coming decade will be defined not by whether AI replaces journalists, but by
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button 
-                    disabled={isRewriting} 
-                    onClick={handleRewriteArticle}
-                  >
-                    {isRewriting ? (
-                      <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <FileEdit className="mr-2 h-4 w-4" />
-                    )}
-                    {isRewriting ? "Rewriting..." : "Rewrite as this type"}
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          className="w-full" 
+                          size="lg"
+                          disabled={isRewriting} 
+                          onClick={handleRewriteArticle}
+                        >
+                          {isRewriting ? (
+                            <>
+                              <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
+                              Generating Article...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="mr-2 h-5 w-5" />
+                              Write Article
+                            </>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Generate a journalistic article based on your sources and research</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </div>
             </PopoverContent>
@@ -640,7 +657,21 @@ The coming decade will be defined not by whether AI replaces journalists, but by
             contentWarnings={contentWarnings} 
             onAdd={handleAddContentWarning}
             onRemove={handleRemoveContentWarning}
-          />
+          >
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>{t("editor.add-warning")}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Add a content warning for sensitive or potentially triggering material</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </ContentWarningDialog>
         </div>
 
         <WordCountIndicator 
@@ -651,7 +682,21 @@ The coming decade will be defined not by whether AI replaces journalists, but by
         <BiasDetector 
           content={taskStore.finalReport}
           onNeutralize={handleBiasNeutralize}
-        />
+        >
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <Scale className="h-4 w-4" />
+                  <span>{t("editor.detect-bias")}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Detect and neutralize potential bias in your article</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </BiasDetector>
 
         {taskStore.finalReport && taskStore.sources.length > 0 && (
           <JournalisticMetricsPanel 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FileText,
@@ -80,6 +80,8 @@ export default function ArticleStructureEditor({ onApplyTemplate }: ArticleStruc
   const [customTemplate, setCustomTemplate] = useState<string>("");
   const [showCustomEditor, setShowCustomEditor] = useState(false);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [opinionBias, setOpinionBias] = useState<string>("");
+  const [showOpinionInput, setShowOpinionInput] = useState(false);
   
   const templates: ArticleTemplate[] = [
     {
@@ -650,25 +652,312 @@ export default function ArticleStructureEditor({ onApplyTemplate }: ArticleStruc
 
 ---
 **Expert Contributors:** [Names and credentials]`
+    },
+    {
+      id: "oped",
+      name: "Op-Ed",
+      description: "An opinion piece expressing a specific viewpoint or stance on an issue, often persuasive in nature.",
+      wordCountRange: "600-800 words",
+      sections: [
+        {
+          name: "Headline",
+          description: "Clear statement of the opinion or argument being made.",
+          example: "Why We Must Address Climate Change Today",
+          tips: [
+            "Make your stance clear from the headline",
+            "Use strong, decisive language",
+            "Consider using 'I' or 'We' to establish personal perspective"
+          ]
+        },
+        {
+          name: "Introduction",
+          description: "Opening that presents the issue and clearly states your position.",
+          example: "As wildfires rage across three continents and cities face unprecedented flooding, I believe we can no longer afford to debate whether climate action is necessary—only how quickly we can implement it.",
+          tips: [
+            "Establish your credibility on the topic",
+            "State your thesis/position clearly",
+            "Use a compelling hook to draw readers in"
+          ]
+        },
+        {
+          name: "Personal Connection",
+          description: "Explain your personal stake or interest in the issue.",
+          example: "Having grown up in coastal Florida, I've witnessed firsthand how rising sea levels are transforming communities from stable neighborhoods into flood zones.",
+          tips: [
+            "Share relevant personal experiences",
+            "Explain what motivated your interest in this topic",
+            "Establish why readers should care about your perspective"
+          ]
+        },
+        {
+          name: "Supporting Arguments",
+          description: "Present evidence and reasoning that supports your position.",
+          example: "The economic argument alone is compelling: A recent study from Stanford University found that for every dollar spent on climate mitigation today, we save approximately seven dollars in disaster response costs within the next decade.",
+          tips: [
+            "Use facts, statistics, and expert opinions",
+            "Address potential counterarguments preemptively",
+            "Connect arguments to real-world implications"
+          ]
+        },
+        {
+          name: "Opposing Viewpoints",
+          description: "Acknowledge and address counterarguments fairly.",
+          example: "Critics argue that immediate climate action would harm economic growth and cost jobs. While transition costs are real, studies consistently show that green technology sectors create more jobs than traditional fossil fuel industries.",
+          tips: [
+            "Present opposing views accurately and fairly",
+            "Respond with reasoned arguments, not dismissal",
+            "Show you've considered multiple perspectives"
+          ]
+        },
+        {
+          name: "Call to Action",
+          description: "Specific steps or changes you advocate for.",
+          example: "We need three immediate policy changes: First, a carbon fee and dividend program that incentivizes clean energy while protecting low-income households. Second, infrastructure investment focused on resilience and renewable energy. Third, international climate financing to support developing nations.",
+          tips: [
+            "Be specific about what should happen",
+            "Make suggestions that are actionable",
+            "Consider multiple levels of action (individual, community, policy)"
+          ]
+        },
+        {
+          name: "Conclusion",
+          description: "Reinforces your main argument and leaves a lasting impression.",
+          example: "The climate crisis presents not just challenges, but opportunities to create a more equitable and sustainable world. The question is not whether we can afford to act, but whether we can afford not to.",
+          tips: [
+            "Reinforce your main argument",
+            "End with something memorable",
+            "Avoid introducing new arguments"
+          ]
+        }
+      ],
+      bestPractices: [
+        "Clearly identify your opinion as such, not as objective fact",
+        "Use first-person perspective where appropriate",
+        "Support opinions with evidence and reasoned arguments",
+        "Consider and address opposing viewpoints fairly",
+        "Focus on one main argument rather than multiple issues",
+        "Avoid overly academic or technical language",
+        "Include a specific call to action when possible"
+      ],
+      examples: [
+        {
+          title: "The Future Is Being Built in America",
+          url: "https://www.nytimes.com/2023/08/14/opinion/biden-economy-semiconductors-climate-change-infrastructure.html",
+          publication: "The New York Times"
+        },
+        {
+          title: "I'm a Conservative Christian Environmentalist. We Need to Talk",
+          url: "https://www.washingtonpost.com/opinions/2022/05/03/conservative-christian-environmentalist-climate-change/",
+          publication: "The Washington Post"
+        }
+      ],
+      fullTemplate: `# [STRONG OPINION STATEMENT HEADLINE]
+
+[INTRODUCTION - State your position clearly and why it matters]
+
+## Personal Perspective
+
+[Share your personal connection or interest in the issue]
+
+## Why This Matters
+
+[Explain the broader significance of the issue]
+
+## The Case For [Your Position]
+
+[SUPPORTING EVIDENCE POINT 1]
+
+[SUPPORTING EVIDENCE POINT 2]
+
+[SUPPORTING EVIDENCE POINT 3]
+
+## Addressing Concerns
+
+[Acknowledge and respond to opposing viewpoints]
+
+## What Should Be Done
+
+[Specific recommendations or call to action]
+
+## Conclusion
+
+[Reinforce main argument and end with something memorable]
+
+---
+*[Author name] is [brief credentials relevant to the topic].*`
+    },
+    {
+      id: "hitpiece",
+      name: "Critical Analysis",
+      description: "A detailed examination of a subject that highlights significant failures, controversies, or concerning aspects.",
+      wordCountRange: "1,000-1,500 words",
+      sections: [
+        {
+          name: "Headline",
+          description: "Direct statement that signals the critical nature of the piece.",
+          example: "Inside TechCorp's Toxic Culture: How Leadership Failed Its Employees",
+          tips: [
+            "Be direct without being sensationalist",
+            "Use strong but factual language",
+            "Focus on the substantive issue, not personal attacks"
+          ]
+        },
+        {
+          name: "Introduction",
+          description: "Set up the subject and the key problems to be examined.",
+          example: "TechCorp, once hailed as a model employer, has seen an exodus of talent and multiple discrimination lawsuits in the past year. Interviews with 24 current and former employees reveal a pattern of problematic leadership decisions that created a hostile work environment.",
+          tips: [
+            "Establish what's at stake",
+            "Provide context for why this critique matters",
+            "Preview the main findings"
+          ]
+        },
+        {
+          name: "Background",
+          description: "Necessary context about the subject and prior reputation.",
+          example: "Founded in 2010, TechCorp grew rapidly under CEO James Miller, reaching a valuation of $2 billion by 2018. The company frequently topped 'Best Places to Work' lists and was praised for its innovative management style—an image now at odds with internal reality.",
+          tips: [
+            "Provide relevant history",
+            "Establish the gap between perception and reality",
+            "Include neutral information about the subject"
+          ]
+        },
+        {
+          name: "Evidence of Problems",
+          description: "Well-documented examples of the issues being critiqued.",
+          example: "Internal documents obtained by this publication show that between 2020-2022, reports of harassment to HR increased by 300%, while the company's response time to these complaints doubled.",
+          tips: [
+            "Rely on primary sources and documents when possible",
+            "Use multiple examples to establish patterns",
+            "Be specific rather than making general accusations",
+            "Include direct quotes from affected parties"
+          ]
+        },
+        {
+          name: "Impact Assessment",
+          description: "Analysis of how these problems affect stakeholders.",
+          example: "The company's failure to address these issues has resulted in measurable harm: a 40% staff turnover rate, legal costs exceeding $5 million, and a product development cycle that has fallen significantly behind competitors.",
+          tips: [
+            "Quantify impact when possible",
+            "Consider multiple stakeholder perspectives",
+            "Connect specific problems to specific outcomes"
+          ]
+        },
+        {
+          name: "Response from Subject",
+          description: "The subject's perspective or defense.",
+          example: "When presented with these findings, TechCorp spokesperson Maria Chen stated that the company is \"taking these concerns seriously\" and has \"implemented new training programs.\" However, former HR director Thomas Wang, who left in March, described these measures as \"cosmetic changes that don't address structural problems.\"",
+          tips: [
+            "Always seek comment from the subject of criticism",
+            "Present their response fairly",
+            "Provide context or fact-checking for responses"
+          ]
+        },
+        {
+          name: "Systemic Analysis",
+          description: "Broader context or pattern that this case represents.",
+          example: "TechCorp's issues reflect a pattern seen across the tech industry, where rapid growth often outpaces the development of proper governance structures and accountability mechanisms.",
+          tips: [
+            "Connect specific case to larger trends or issues",
+            "Avoid making the piece solely about one individual",
+            "Consider industry standards or best practices as reference points"
+          ]
+        },
+        {
+          name: "Conclusion",
+          description: "Summary of findings and implications.",
+          example: "While TechCorp publicly champions innovation and employee wellbeing, the evidence shows a significant gap between rhetoric and reality. Until leadership addresses these systemic issues, the company risks continued talent loss, legal exposure, and erosion of its market position.",
+          tips: [
+            "Restate the key issues identified",
+            "Avoid unnecessary personal attacks",
+            "Focus on accountability and necessary changes"
+          ]
+        }
+      ],
+      bestPractices: [
+        "Focus criticism on actions, policies, and patterns rather than personal attacks",
+        "Verify all facts rigorously and from multiple sources",
+        "Give the subject ample opportunity to respond to criticisms",
+        "Distinguish between facts and opinions in your writing",
+        "Consider potential legal issues (defamation, libel) and ensure claims are defensible",
+        "Maintain professional tone even when delivering harsh criticism",
+        "Include context about why these criticisms matter to the public interest"
+      ],
+      examples: [
+        {
+          title: "The Black Box Economy",
+          url: "https://www.propublica.org/article/the-secret-irs-files-trove-of-never-before-seen-records-reveal-how-the-wealthiest-avoid-income-tax",
+          publication: "ProPublica"
+        },
+        {
+          title: "Amazon's System to Rate Workers",
+          url: "https://www.nytimes.com/interactive/2021/06/15/us/amazon-workers.html",
+          publication: "The New York Times"
+        }
+      ],
+      fullTemplate: `# [CRITICAL HEADLINE FOCUSED ON THE ISSUE]
+
+[INTRODUCTION - Establish the subject and key problems]
+
+## Background
+
+[Context about the subject and their prior reputation]
+
+## The Problems
+
+### Issue One: [Specific Problem]
+[Detailed evidence and examples]
+
+### Issue Two: [Specific Problem]
+[Detailed evidence and examples]
+
+### Issue Three: [Specific Problem]
+[Detailed evidence and examples]
+
+## Impact and Consequences
+
+[How these issues affect stakeholders]
+
+## The Response
+
+[Subject's perspective or defense and analysis]
+
+## Broader Implications
+
+[Systemic issues this case represents]
+
+## Conclusion
+
+[Summary of findings and why they matter]
+
+---
+*This reporting is based on [describe sources: documents, interviews, etc.]*`
     }
   ];
   
   // Find currently selected template
   const selectedTemplate = templates.find(template => template.id === selectedTemplateId) || templates[0];
   
+  useEffect(() => {
+    // Show opinion input field for opinion-based templates
+    setShowOpinionInput(selectedTemplateId === "oped");
+  }, [selectedTemplateId]);
+  
   // Handle applying a template to the main editor
   const handleApplyTemplate = () => {
-    if (showCustomEditor && customTemplate) {
-      onApplyTemplate(customTemplate);
+    let template = selectedTemplate.fullTemplate;
+    
+    // If it's an opinion piece and has bias input, inject the bias/stance
+    if (showOpinionInput && opinionBias) {
+      template = template.replace('[INTRODUCTION - State your position clearly and why it matters]', 
+        `[INTRODUCTION - State your position clearly and why it matters]\n\nStance/Opinion: ${opinionBias}`);
+    }
+    
+    if (onApplyTemplate) {
+      onApplyTemplate(template);
       toast({
-        title: "Custom template applied",
-        description: "Your custom template has been applied to the editor."
-      });
-    } else {
-      onApplyTemplate(selectedTemplate.fullTemplate);
-      toast({
-        title: "Template applied",
-        description: `The ${selectedTemplate.name} template has been applied to the editor.`
+        title: "Template Applied",
+        description: "Article structure template has been applied to the editor."
       });
     }
   };
@@ -741,6 +1030,37 @@ export default function ArticleStructureEditor({ onApplyTemplate }: ArticleStruc
                 </SelectContent>
               </Select>
             </div>
+            
+            {/* Show opinion bias input for opinion articles */}
+            {showOpinionInput && (
+              <div className="flex flex-col space-y-2 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                <Label htmlFor="opinion-bias" className="font-medium">
+                  Your Opinion/Stance:
+                </Label>
+                <div className="flex gap-2">
+                  <Textarea 
+                    id="opinion-bias"
+                    placeholder="Enter your specific opinion or stance on this topic. For example: 'I believe renewable energy should be prioritized over fossil fuels'"
+                    value={opinionBias}
+                    onChange={(e) => setOpinionBias(e.target.value)}
+                    className="min-h-[80px]"
+                  />
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Info className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        <p>For opinion pieces, clearly state your position or stance on the issue. 
+                        This will help the AI generate content that reflects your viewpoint.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
+            )}
             
             <div className="border rounded-md p-4">
               <div className="flex items-center justify-between">
