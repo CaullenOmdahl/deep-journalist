@@ -89,13 +89,13 @@ Follow these steps to get Deep Journalist up and running on your local browser.
 
    ```env
    # (Optional) Server-side Gemini API Key (Required for server API calls)
-   GOOGLE_GENERATIVE_AI_API_KEY=
+   GOOGLE_GENERATIVE_AI_API_KEY=your-api-key-here
 
    # (Optional) Server API Proxy URL. Default, `https://generativelanguage.googleapis.com`
    API_PROXY_BASE_URL=
 
    # (Optional) Server API Access Password for enhanced security
-   ACCESS_PASSWORD=
+   ACCESS_PASSWORD=your-secure-password-here
 
    # (Optional) Injected script code can be used for statistics or error tracking.
    HEAD_SCRIPTS=
@@ -136,8 +136,8 @@ You can also specify additional environment variables:
 ```bash
 docker run -d --name deep-journalist-app \
    -p 3000:3000 \
-   -e GOOGLE_GENERATIVE_AI_API_KEY=AIzaSy... \
-   -e ACCESS_PASSWORD=your-password \
+   -e GOOGLE_GENERATIVE_AI_API_KEY=your-api-key-here \
+   -e ACCESS_PASSWORD=your-secure-password-here \
    deep-journalist
 ```
 
@@ -153,8 +153,8 @@ services:
       image: deep-journalist
       container_name: deep-journalist-app
       environment:
-         - GOOGLE_GENERATIVE_AI_API_KEY=AIzaSy...
-         - ACCESS_PASSWORD=your-password
+         - GOOGLE_GENERATIVE_AI_API_KEY=your-api-key-here
+         - ACCESS_PASSWORD=your-secure-password-here
       ports:
          - 3000:3000
 ```
