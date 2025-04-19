@@ -220,9 +220,10 @@ postcss.config.mjs      # PostCSS configuration
 README.md               # Project documentation
 tailwind.config.ts      # Tailwind CSS configuration
 tsconfig.json           # TypeScript configuration
-TechnicalDebt.md        # Technical debt tracking
-TestData.md             # Sample test data
-todo.md                 # Transformation checklist
+docs/                   # Project documentation
+  TechnicalDebt.md      # Technical debt tracking
+  TestData.md           # Sample test data
+  todo.md               # Transformation checklist
 public/                 # Static assets
 src/                    # Next.js application code
 ```
