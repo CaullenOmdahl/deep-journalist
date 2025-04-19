@@ -25,9 +25,7 @@ Deep Journalist is a cutting-edge application built with Next.js 15, leveraging 
 - **Methodology Transparency:** Includes clear documentation of research methods, source verification processes, and limitations.
 - **Multi-language Translation:** Translate articles into 11 different languages while preserving formatting and structure.
 - **Social Media Integration:** Export content optimized for various platforms (Twitter/X, Facebook, LinkedIn, WhatsApp) with appropriate formatting and character limits.
-- **Multi-platform Support:** Supports rapid deployment to Vercel, Cloudflare and other platforms.
 - **Powered by Google Gemini:** Utilizes advanced Google Gemini models for accurate and insightful analysis.
-- **Local & Server API Support:** Offers flexibility with both local and server-side API calling options to suit your needs.
 - **Privacy-Focused:** Your data remains private and secure, as all data is stored locally on your browser.
 - **Multi-language Support:** English、简体中文.
 - **Built with Modern Technologies:** Developed using Next.js 15 and Shadcn UI, ensuring a modern, performant, and visually appealing user experience.
@@ -57,7 +55,19 @@ Deep Journalist is a cutting-edge application built with Next.js 15, leveraging 
    cd deep-journalist
    ```
 
-3. Start using
+3. Install dependencies:
+   
+   ```bash
+   npm install
+   ```
+
+4. Start the development server:
+
+   ```bash
+   npm run dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## ⌨️ Development
 
@@ -66,7 +76,7 @@ Follow these steps to get Deep Journalist up and running on your local browser.
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (version 18.18.0 or later recommended)
-- [pnpm](https://pnpm.io/) or [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
+- [npm](https://www.npmjs.com/) or [pnpm](https://pnpm.io/) or [yarn](https://yarnpkg.com/)
 
 ### Installation
 
@@ -80,7 +90,7 @@ Follow these steps to get Deep Journalist up and running on your local browser.
 2. **Install dependencies:**
 
    ```bash
-   pnpm install  # or npm install or yarn install
+   npm install  # or pnpm install or yarn install
    ```
 
 3. **Set up Environment Variables:**
@@ -114,69 +124,19 @@ Follow these steps to get Deep Journalist up and running on your local browser.
 4. **Run the development server:**
 
    ```bash
-   pnpm dev  # or npm run dev or yarn dev
+   npm run dev  # or pnpm dev or yarn dev
    ```
 
    Open your browser and visit [http://localhost:3000](http://localhost:3000) to access Deep Journalist.
 
 ## 🚢 Deployment
 
-### Docker
-
-> The Docker version needs to be 20 or above, otherwise it will prompt that the image cannot be found.
-
-```bash
-# Build your own docker image
-docker build -t deep-journalist .
-docker run -d --name deep-journalist-app -p 3000:3000 deep-journalist
-```
-
-You can also specify additional environment variables:
-
-```bash
-docker run -d --name deep-journalist-app \
-   -p 3000:3000 \
-   -e GOOGLE_GENERATIVE_AI_API_KEY=your-api-key-here \
-   -e ACCESS_PASSWORD=your-secure-password-here \
-   deep-journalist
-```
-
-Deploy using `docker-compose.yml`:
-
-```bash
-version: '3.9'
-services:
-   deep-journalist:
-      build:
-        context: .
-        dockerfile: Dockerfile
-      image: deep-journalist
-      container_name: deep-journalist-app
-      environment:
-         - GOOGLE_GENERATIVE_AI_API_KEY=your-api-key-here
-         - ACCESS_PASSWORD=your-secure-password-here
-      ports:
-         - 3000:3000
-```
-
-To start the container using Docker Compose:
-
-```bash
-docker compose up -d
-```
-
-To build and start:
-
-```bash
-docker compose up -d --build
-```
-
 ### Static Deployment
 
-You can also build a static page version directly, and then upload all files in the `out` directory to any website service that supports static pages.
+You can build a static page version directly, and then upload all files in the `out` directory to any website service that supports static pages.
 
 ```bash
-pnpm build:export
+npm run build:export
 ```
 
 ## ⚙️ Configuration
@@ -246,6 +206,26 @@ We welcome contributions to Deep Journalist! If you have ideas for improvements,
 4. Submit a pull request.
 
 For major changes, please open an issue first to discuss your proposed changes.
+
+## 📂 Project Structure
+
+```
+components.json         # UI components configuration
+LICENSE                 # Project license
+next-env.d.ts           # TypeScript definitions for Next.js
+next.config.js          # Next.js configuration
+package.json            # NPM package configuration
+pnpm-lock.yaml          # Package lock file
+postcss.config.mjs      # PostCSS configuration
+README.md               # Project documentation
+tailwind.config.ts      # Tailwind CSS configuration
+tsconfig.json           # TypeScript configuration
+TechnicalDebt.md        # Technical debt tracking
+TestData.md             # Sample test data
+todo.md                 # Transformation checklist
+public/                 # Static assets
+src/                    # Next.js application code
+```
 
 ## ✉️ Contact
 

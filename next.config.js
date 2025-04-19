@@ -24,21 +24,10 @@ const nextConfig = {
     unoptimized: true,
   },
 
-  // Server configuration to allow external connections
-  server: {
-    // Listen on all interfaces
-    host: '0.0.0.0',
-    port: parseInt(process.env.PORT || '3000'),
-  },
-
-  // Keep the development server running even when window loses focus
-  webpackDevMiddleware: config => {
-    config.watchOptions = {
-      poll: 1000,
-      aggregateTimeout: 300,
-    }
-    return config
-  },
+  // These properties have been moved to a different location or are no longer needed in Next.js 15+
+  // The server options can be configured through environment variables:
+  // - HOST=0.0.0.0 npm run dev (for host)
+  // - PORT=3000 npm run dev (for port)
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig
