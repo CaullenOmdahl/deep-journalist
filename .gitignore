@@ -32,6 +32,7 @@ pnpm-debug.log*
 # Editor directories and files
 .idea/
 .vscode/
+.cursor/
 *.suo
 *.ntvs*
 *.njsproj
@@ -48,6 +49,7 @@ coverage/
 .vercel
 .turbo
 RunData/
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -94,6 +96,4 @@ db.sqlite3
 app/scrapers/extensions/
 
 # Windows
-Thumbs.db 
-.env.docker
-.env.docker
+Thumbs.db
