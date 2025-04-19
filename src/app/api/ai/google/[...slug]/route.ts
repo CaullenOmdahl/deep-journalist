@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { shuffle } from "radash";
+import apiKeyManager from "@/utils/api-key-manager";
+import { googleGenerativeAiLimiter, perKeyRateLimiter, isRateLimitingEnabled } from "@/utils/rate-limiter";
 
 export const runtime = "edge";
 export const preferredRegion = [
@@ -13,8 +14,6 @@ export const preferredRegion = [
   "kix1",
 ];
 
-const GOOGLE_GENERATIVE_AI_API_KEY = process.env
-  .GOOGLE_GENERATIVE_AI_API_KEY as string;
 const API_PROXY_BASE_URL =
   process.env.API_PROXY_BASE_URL || "https://generativelanguage.googleapis.com";
 
@@ -26,10 +25,6 @@ async function handler(req: NextRequest) {
   headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-goog-api-key, x-goog-api-client");
   headers.set("Access-Control-Max-Age", "86400");
   
-  // Add specific domain in case of restriction
-  const refererHeader = req.headers.get("referer");
-  console.log("Referer:", refererHeader);
-
   // Handle preflight request
   if (req.method === "OPTIONS") {
     return new NextResponse(null, { 
@@ -38,13 +33,45 @@ async function handler(req: NextRequest) {
     });
   }
 
-  const apiKeys = GOOGLE_GENERATIVE_AI_API_KEY.split(",");
-  if (!apiKeys[0]) {
+  // Check if we have API keys configured
+  if (!apiKeyManager.hasKeys()) {
     console.error("No API key found");
     return NextResponse.json(
       { code: 401, message: "API key is required" },
       { status: 401, headers }
     );
+  }
+
+  // Apply rate limiting if enabled
+  if (isRateLimitingEnabled) {
+    // Check global rate limit first
+    if (!googleGenerativeAiLimiter.tryConsume('global')) {
+      console.warn("Global rate limit reached");
+      const waitTimeMs = googleGenerativeAiLimiter.getWaitTimeMs('global');
+      const waitTimeSec = Math.ceil(waitTimeMs / 1000);
+      
+      return NextResponse.json(
+        { 
+          code: 429, 
+          message: `Rate limit exceeded. Please try again in ${waitTimeSec} seconds.`,
+          waitTimeMs 
+        },
+        { status: 429, headers }
+      );
+    }
+    
+    // Then check per-key rate limit
+    if (!perKeyRateLimiter.tryConsume()) {
+      console.warn("Per-key rate limit reached");
+      // For security, don't expose specific key rate limit details in the response
+      return NextResponse.json(
+        { 
+          code: 429, 
+          message: "API key rate limit exceeded. Please try again later." 
+        },
+        { status: 429, headers }
+      );
+    }
   }
 
   const { searchParams } = new URL(req.url);
@@ -59,7 +86,6 @@ async function handler(req: NextRequest) {
     path,
     params,
     hasBody: !!body,
-    apiKeyLength: apiKeys[0].length,
     url: req.url
   });
 
@@ -70,8 +96,16 @@ async function handler(req: NextRequest) {
     // Create a new URLSearchParams object for the query
     const queryParams = new URLSearchParams();
     
+    // Get API key from our manager (handles rotation and tracking)
+    const apiKey = apiKeyManager.getNextKey();
+    if (!apiKey) {
+      return NextResponse.json(
+        { code: 401, message: "No available API keys" },
+        { status: 401, headers }
+      );
+    }
+    
     // Add the API key as a query parameter
-    const apiKey = apiKeys[Math.floor(Math.random() * apiKeys.length)];
     queryParams.set('key', apiKey);
     
     // Add any existing query parameters
@@ -91,7 +125,6 @@ async function handler(req: NextRequest) {
     }
     
     console.log("Making request to:", url.replace(apiKey, 'REDACTED'));
-    console.log("Full request path:", req.url);
     
     // Detect if this is a streaming request for SSE
     const isStreamRequest = url.includes('streamGenerateContent') || searchParams.get('alt') === 'sse';
@@ -107,8 +140,6 @@ async function handler(req: NextRequest) {
       "Content-Type": req.headers.get("Content-Type") || "application/json",
       "x-goog-api-client": req.headers.get("x-goog-api-client") || "genai-js/0.24.0",
     };
-
-    console.log("Request headers:", requestHeaders);
     
     try {
       const response = await fetch(url, {
@@ -132,6 +163,13 @@ async function handler(req: NextRequest) {
           url: url.replace(apiKey, 'REDACTED'),
           error: errorData
         });
+        
+        // Record the error in our API key manager
+        apiKeyManager.recordError(
+          apiKey, 
+          errorData.error?.message || response.statusText,
+          errorData.error?.code
+        );
         
         // Return a more detailed error
         return NextResponse.json({
@@ -158,6 +196,12 @@ async function handler(req: NextRequest) {
       return newResponse;
     } catch (fetchError) {
       console.error("Fetch Error:", fetchError);
+      
+      // Record fetch error in the API key manager
+      if (apiKey) {
+        apiKeyManager.recordError(apiKey, fetchError.message || "Fetch error");
+      }
+      
       return NextResponse.json(
         { code: 500, message: fetchError.message || "Failed to fetch from Google AI API" },
         { status: 500, headers }
