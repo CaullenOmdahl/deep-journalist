@@ -27,12 +27,11 @@ const Header = dynamic(() => import("@/components/Header"));
 const Setting = dynamic(() => import("@/components/Setting"));
 const Topic = dynamic(() => import("@/components/Research/Topic"));
 const Feedback = dynamic(() => import("@/components/Research/Feedback"));
-const SearchResult = dynamic(
-  () => import("@/components/Research/SearchResult")
-);
+const SearchResult = dynamic(() => import("@/components/Research/SearchResult"));
 const FinalReport = dynamic(() => import("@/components/Research/FinalReport"));
 const History = dynamic(() => import("@/components/History"));
 const RateLimitStatus = dynamic(() => import("@/components/RateLimitStatus"));
+const ConnectionStatusIndicator = dynamic(() => import("@/components/ConnectionStatus").then(mod => mod.ConnectionStatusIndicator));
 
 function Home() {
   const { t } = useTranslation();
@@ -52,6 +51,7 @@ function Home() {
         <main>
           <div className="my-2 sticky top-0 z-10">
             <RateLimitStatus />
+            <ConnectionStatusIndicator />
           </div>
           <Topic />
           <Feedback />
@@ -87,6 +87,10 @@ function Home() {
           Advanced AI-powered research assistant for professional journalism
         </p>
       </header>
+
+      <div className="max-w-md mx-auto mb-4">
+        <ConnectionStatusIndicator />
+      </div>
 
       <main>
         <section className="max-w-4xl mx-auto mb-16">

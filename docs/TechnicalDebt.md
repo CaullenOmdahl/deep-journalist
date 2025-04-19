@@ -5,8 +5,8 @@ This document tracks technical debt in the Deep Journalist project. Items are ca
 ## Critical (Blocking Functionality)
 
 ### API and Integration
-- [ ] Google API key exposed in .env file - implement proper secret management
-- [ ] Handle API rate limiting for external services
+- [x] Google API key exposed in .env file - implement proper secret management
+- [x] Handle API rate limiting for external services
 
 ### Build and Deployment
 - [x] Docker container build issues:
@@ -27,7 +27,7 @@ This document tracks technical debt in the Deep Journalist project. Items are ca
   - [x] Successfully ran Docker container
 - [ ] Environment configuration inconsistencies
 - [x] UI component hierarchy error: `TabsContent` must be used within `Tabs` component (causing runtime error)
-- [ ] Connection issues: "Could not establish connection. Receiving end does not exist" error in browser console
+- [x] Connection issues: "Could not establish connection. Receiving end does not exist" error in browser console
 - [x] Missing resources causing 404 errors (favicon.ico and other resources)
 
 ## High Priority
@@ -39,12 +39,12 @@ This document tracks technical debt in the Deep Journalist project. Items are ca
 - [ ] Fix redundant re-renders in UI components
 
 ### Error Handling
-- [ ] Improve error handling for API requests
-- [ ] Create consistent error handling pattern across the application
-- [ ] Implement proper error logging mechanism
-- [ ] Add user-friendly error messages and recovery options
+- [x] Improve error handling for API requests
+- [x] Create consistent error handling pattern across the application
+- [x] Implement proper error logging mechanism
+- [x] Add user-friendly error messages and recovery options
 - [ ] Fix 404 errors during search process (missing API endpoints or incorrect routing)
-- [ ] Add error handling for connection failures between components
+- [x] Add error handling for connection failures between components
 
 ### TypeScript and Type Safety
 - [ ] Fix missing module declarations throughout the codebase
@@ -76,10 +76,10 @@ This document tracks technical debt in the Deep Journalist project. Items are ca
 - [ ] Create better content parsing for complex layouts
 
 ### Security Concerns
-- [ ] Implement proper validation of external URLs
+- [x] Implement proper validation of external URLs
 - [ ] Address potential XSS vulnerabilities in rendered content
 - [ ] Add sanitization for user inputs
-- [ ] Implement rate limiting for API endpoints
+- [x] Implement rate limiting for API endpoints
 
 ## Low Priority
 
@@ -102,7 +102,7 @@ This document tracks technical debt in the Deep Journalist project. Items are ca
 - [ ] Add keyboard shortcuts for common actions
 - [ ] Add visual progress indicators for long-running tasks (e.g., research in progress)
 - [ ] Update "Waiting for research task..." message to provide better status information
-- [ ] Create and include favicon.ico file to prevent 404 errors
+- [x] Create and include favicon.ico file to prevent 404 errors
 
 ## Completed
 - [x] Created missing UI components required for build
@@ -133,6 +133,10 @@ This document tracks technical debt in the Deep Journalist project. Items are ca
 - [x] Fixed API key loading from server environment by creating settings endpoint
 - [x] Fixed UI component hierarchy error: `TabsContent` must be used within `Tabs` component in SearchResult.tsx
 - [x] Created and added favicon.ico file to the public directory to prevent 404 errors
+- [x] Created API key management utility with secure rotation and usage tracking
+- [x] Enhanced rate limiter with token bucket algorithm and better error handling
+- [x] Implemented comprehensive error handling system with structured errors and recovery mechanisms
+- [x] Added connection status monitoring and UI indicators for better user experience
 
 ## Action Plan
 
@@ -149,7 +153,7 @@ This document tracks technical debt in the Deep Journalist project. Items are ca
 10. ✅ Fix API key loading from server environment
 11. ✅ Fix UI component hierarchy error (TabsContent within Tabs)
 12. ✅ Create favicon.ico file and place in public directory
-13. [ ] Investigate and fix connection issues between components
+13. ✅ Investigate and fix connection issues between components
 
 ### Short-term Actions
 1. [ ] Test full application functionality
@@ -157,8 +161,8 @@ This document tracks technical debt in the Deep Journalist project. Items are ca
 3. [ ] Update pnpm-lock.yaml file to match package.json
 4. [ ] Fix Docker ENV warnings
 5. [ ] Address 404 errors for missing API endpoints
-6. [ ] Implement error handling for failed connections
-7. [ ] Add visual progress indicators for research process
+6. [x] Implement error handling for failed connections
+7. [x] Add visual progress indicators for research process
 
 ### Medium-term Actions
 1. [ ] Systematically fix all ESLint errors
@@ -166,4 +170,4 @@ This document tracks technical debt in the Deep Journalist project. Items are ca
 3. [ ] Address import path issues
 4. [ ] Fix security vulnerabilities from npm audit
 5. [ ] Optimize API calls for better performance
-6. [ ] Implement caching for search results 
+6. [ ] Implement caching for search results
