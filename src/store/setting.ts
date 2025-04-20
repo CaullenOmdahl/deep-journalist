@@ -16,7 +16,7 @@ interface SettingFunction {
 
 export const defaultValues = {
   apiKey: "",
-  apiProxy: "",
+  apiProxy: "https://generativelanguage.googleapis.com",
   accessPassword: "",
   thinkingModel: "gemini-2.0-flash-thinking-exp",
   networkingModel: "gemini-2.0-flash-exp",

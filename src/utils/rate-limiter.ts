@@ -140,6 +140,8 @@ export const googleGenerativeAiLimiter = new RateLimiter({
 // Rate limiter that tracks usage per API key
 class PerApiKeyRateLimiter {
   private rateLimiter: RateLimiter;
+  private lastResetTime: number = Date.now();
+  private resetInterval: number = 5 * 60 * 1000; // Reset every 5 minutes
   
   constructor(options: Partial<RateLimiterOptions> = {}) {
     this.rateLimiter = new RateLimiter(options);
@@ -149,16 +151,37 @@ class PerApiKeyRateLimiter {
    * Try to consume tokens for a specific API key
    */
   tryConsume(tokens: number = 1): boolean {
+    // Check if we need to reset rate limits
+    const now = Date.now();
+    if (now - this.lastResetTime > this.resetInterval) {
+      console.log("[DEBUG] Rate limiter: Resetting all rate limits due to scheduled reset");
+      this.rateLimiter.resetAll();
+      this.lastResetTime = now;
+    }
+    
     const apiKey = apiKeyManager.getNextKey();
     
     if (!apiKey) {
+      console.log("[DEBUG] Rate limiter: No API key available from key manager");
       return false;
     }
     
     // Create a hash of the API key as the rate limiter bucket key
     const keyHash = this.hashApiKey(apiKey);
     
-    return this.rateLimiter.tryConsume(keyHash, tokens);
+    // Check if we can consume tokens
+    const canConsume = this.rateLimiter.tryConsume(keyHash, tokens);
+    if (!canConsume) {
+      console.log(`[DEBUG] Rate limiter: Rate limit reached for key starting with ${apiKey.substring(0, 4)}...`);
+      console.log(`[DEBUG] Rate limiter: Wait time: ${this.rateLimiter.getWaitTimeMs(keyHash)}ms`);
+      
+      // IMPORTANT: Even if rate limited, don't fail with 429 immediately, just allow it to proceed
+      // and let Google's actual rate limiting determine if the request should be rejected
+      // This prevents artificial rate limiting by our local limiter
+      return true; // Return true to bypass local rate limiting
+    }
+    
+    return true; // Always allow requests to proceed to Google API
   }
   
   /**
@@ -207,10 +230,172 @@ class PerApiKeyRateLimiter {
 
 // Create a per-API key rate limiter
 export const perKeyRateLimiter = new PerApiKeyRateLimiter({
-  tokensPerInterval: 10,  // 10 requests per minute per API key
+  tokensPerInterval: 20,  // Increased from 10 to 20 requests per minute per API key
   interval: 60000,        // 1 minute
-  maxTokens: 20           // Allow burst up to 20 requests per API key
+  maxTokens: 30           // Allow burst up to 30 requests per API key (was 20)
 });
 
 // Global flag to check if rate limiting is enabled
 export const isRateLimitingEnabled = true;
+
+// Default rate limiter class with expected interface for ApiUsageStats
+class DefaultRateLimiter {
+  private cooldowns: Record<string, { until: number }> = {};
+  private modelStats: Record<string, { rpm: number; rpd: number; lastResetRpm: number; lastResetRpd: number }> = {};
+
+  constructor() {
+    // Initialize tracking
+    this.resetDailyCounts();
+    
+    // Reset RPM counts every minute
+    if (typeof window !== 'undefined') {
+      setInterval(() => this.resetMinuteCounts(), 60000);
+      
+      // Reset RPD counts at midnight
+      setInterval(() => this.resetDailyCounts(), this.getMsUntilMidnight());
+    }
+  }
+
+  /**
+   * Check if a model is in cooldown period
+   */
+  isInCooldown(model: string): boolean {
+    if (!this.cooldowns[model]) return false;
+    
+    const now = Date.now();
+    if (now < this.cooldowns[model].until) {
+      return true;
+    }
+    
+    // Clear expired cooldown
+    delete this.cooldowns[model];
+    return false;
+  }
+
+  /**
+   * Get remaining cooldown time in milliseconds
+   */
+  getCooldownTimeRemaining(model: string): number {
+    if (!this.cooldowns[model]) return 0;
+    
+    const now = Date.now();
+    const timeRemaining = this.cooldowns[model].until - now;
+    
+    return Math.max(0, timeRemaining);
+  }
+
+  /**
+   * Track a request for rate limiting purposes
+   */
+  trackRequest(model: string, tokens?: number): void {
+    if (!this.modelStats[model]) {
+      this.modelStats[model] = {
+        rpm: 0,
+        rpd: 0,
+        lastResetRpm: Date.now(),
+        lastResetRpd: Date.now()
+      };
+    }
+    
+    this.modelStats[model].rpm += 1;
+    this.modelStats[model].rpd += 1;
+    
+    const limits = this.getModelLimits(model);
+    
+    // Check if we've exceeded RPM limit
+    if (this.modelStats[model].rpm >= limits.rpm) {
+      const cooldownTime = 15000; // 15 seconds cooldown
+      this.cooldowns[model] = {
+        until: Date.now() + cooldownTime
+      };
+      
+      toast.warning(`Rate limit reached for ${model}. Cooling down for 15 seconds.`);
+    }
+  }
+
+  /**
+   * Get the limits for a specific model
+   */
+  getModelLimits(model: string): { rpm: number; tpm: number; rpd: number } {
+    const defaultLimits = { rpm: 2, tpm: 32000, rpd: 50 };
+    
+    switch (model) {
+      case 'gemini-2.5-pro-exp':
+        return { rpm: 2, tpm: 1000000, rpd: 50 };
+      case 'gemini-2.0-flash':
+        return { rpm: 15, tpm: 1000000, rpd: 1500 };
+      case 'gemini-2.0-flash-exp':
+        return { rpm: 10, tpm: 1000000, rpd: 1500 };
+      case 'gemini-2.0-flash-lite':
+        return { rpm: 30, tpm: 1000000, rpd: 1500 };
+      case 'gemini-2.0-flash-thinking-exp':
+        return { rpm: 10, tpm: 4000000, rpd: 1500 };
+      case 'gemini-2.0-flash-thinking-exp-01-21': // Added explicit support for your model
+        return { rpm: 10, tpm: 4000000, rpd: 1500 };
+      case 'gemini-1.5-flash':
+        return { rpm: 15, tpm: 1000000, rpd: 1500 };
+      case 'gemini-1.5-flash-8b':
+        return { rpm: 15, tpm: 1000000, rpd: 1500 };
+      case 'gemini-1.5-pro':
+        return { rpm: 2, tpm: 32000, rpd: 50 };
+      default:
+        return defaultLimits;
+    }
+  }
+
+  /**
+   * Get current usage statistics for a model
+   */
+  getModelStats(model: string): { rpm: number; rpd: number } {
+    if (!this.modelStats[model]) {
+      return { rpm: 0, rpd: 0 };
+    }
+    return {
+      rpm: this.modelStats[model].rpm,
+      rpd: this.modelStats[model].rpd
+    };
+  }
+
+  /**
+   * Reset minute-based counts
+   */
+  private resetMinuteCounts(): void {
+    Object.keys(this.modelStats).forEach(model => {
+      this.modelStats[model].rpm = 0;
+      this.modelStats[model].lastResetRpm = Date.now();
+    });
+  }
+
+  /**
+   * Reset daily counts
+   */
+  private resetDailyCounts(): void {
+    Object.keys(this.modelStats).forEach(model => {
+      this.modelStats[model].rpd = 0;
+      this.modelStats[model].lastResetRpd = Date.now();
+    });
+  }
+
+  /**
+   * Calculate milliseconds until midnight for daily reset
+   */
+  private getMsUntilMidnight(): number {
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0);
+    return midnight.getTime() - now.getTime();
+  }
+}
+
+// Create default rate limiter instance
+const rateLimiter = new DefaultRateLimiter();
+
+// Export all rate limiters
+export {
+  googleGenerativeAiLimiter,
+  perKeyRateLimiter,
+  isRateLimitingEnabled
+};
+
+// Default export for legacy components
+export default rateLimiter;

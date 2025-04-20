@@ -969,4 +969,4 @@ export default function StoryTracker({ finalReport = "" }: StoryTrackerProps) {
       </CardFooter>
     </Card>
   );
-} 
+}

@@ -66,4 +66,62 @@ export async function GET(req: NextRequest) {
   }
   
   return NextResponse.json({ results }, { status: 200, headers });
-} 
+}
+
+/**
+ * Simple API endpoint to test if a Google API key is valid
+ * Makes a minimal request to the Google Generative AI API
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const { apiKey } = await request.json();
+    
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "API key is required" },
+        { status: 400 }
+      );
+    }
+
+    // Make a simple request to Google's API to test the key
+    // We're just requesting model list with a minimal fields to validate the key
+    const url = new URL("https://generativelanguage.googleapis.com/v1beta/models");
+    url.searchParams.append("key", apiKey);
+    url.searchParams.append("pageSize", "1"); // Only request 1 model to minimize data transfer
+    
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return NextResponse.json(
+        { 
+          error: errorData.error || "API key validation failed",
+          status: response.status,
+          statusText: response.statusText
+        },
+        { status: 400 }
+      );
+    }
+
+    // Key is valid!
+    return NextResponse.json({
+      success: true,
+      message: "API key is valid",
+    });
+    
+  } catch (error) {
+    console.error("Error testing API key:", error);
+    
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : "Unknown error validating API key",
+      },
+      { status: 500 }
+    );
+  }
+}

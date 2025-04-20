@@ -8,6 +8,8 @@ import { useModelProvider } from "@/hooks/useAiProvider";
 import { useTaskStore } from "@/store/task";
 import { useHistoryStore } from "@/store/history";
 import { useSettingStore } from "@/store/setting";
+import { useGlobalStore } from "@/store/global";
+import logger from "@/utils/logger"; // Import the new logger
 import {
   getSystemPrompt,
   getOutputGuidelinesPrompt,
@@ -101,22 +103,51 @@ function useDeepResearch() {
     return false;
   };
 
+  // Check for API key and provide appropriate guidance
+  function checkApiConfiguration(): boolean {
+    const { apiKey, accessPassword } = useSettingStore.getState();
+    
+    if (!apiKey && !accessPassword) {
+      logger.error("Missing API key - opening settings dialog");
+      toast.error("Please add your Google Gemini API key in settings to start research", { duration: 5000 });
+      const { setOpenSetting } = useGlobalStore.getState();
+      setOpenSetting(true);
+      return false;
+    }
+    
+    return true;
+  }
+
   async function askQuestions() {
+    logger.info("askQuestions() function called");
+    
+    // Check if API key is configured
+    if (!checkApiConfiguration()) {
+      return;
+    }
+    
     const { thinkingModel, language } = useSettingStore.getState();
+    logger.info("Settings retrieved - thinkingModel:", thinkingModel, "language:", language);
+    
     const { question } = useTaskStore.getState();
+    logger.info("Question from taskStore:", question);
     
     // Check if model is in cooldown
     if (checkModelCooldown(thinkingModel)) {
+      logger.error("Model is in cooldown period, aborting askQuestions");
       return;
     }
     
     setStatus(t("research.common.thinking"));
     const provider = createProvider("google");
+    logger.info("AI provider created for model:", thinkingModel);
     
     try {
+      logger.info("Tracking request to model:", thinkingModel);
       // Track the request
       rateLimiter.trackRequest(thinkingModel);
       
+      logger.info("Preparing to stream text with prompt based on question:", question);
       const result = streamText({
         model: provider(thinkingModel),
         system: getSystemPrompt(),
@@ -126,7 +157,9 @@ function useDeepResearch() {
         ].join("\n\n"),
         experimental_transform: smoothStream(),
         onError: (error) => {
+          logger.error("Error in streamText during askQuestions:", error);
           if (isRateLimitError(error)) {
+            logger.info("Rate limit error detected, handling rate limit");
             rateLimiter.handleRateLimitError(thinkingModel, error);
           } else {
             handleError(error);
@@ -135,12 +168,18 @@ function useDeepResearch() {
       });
       
       let content = "";
+      logger.info("Setting question in taskStore");
       taskStore.setQuestion(question);
+      
+      logger.info("Starting to process text stream");
       for await (const textPart of result.textStream) {
         content += textPart;
         taskStore.updateQuestions(content);
       }
+      logger.info("Finished processing text stream, final content length:", content.length);
+      
     } catch (error) {
+      logger.error("Error in askQuestions:", error);
       if (isRateLimitError(error)) {
         rateLimiter.handleRateLimitError(thinkingModel, error);
       } else {
@@ -155,7 +194,7 @@ function useDeepResearch() {
     const plimit = Plimit(1);
     const searchModel = "gemini-2.0-flash-exp";
     
-    console.log("Starting search tasks for queries:", queries.map(q => q.query));
+    logger.info("Starting search tasks for queries:", queries.map(q => q.query));
     
     for await (const item of queries) {
       await plimit(async () => {
@@ -174,7 +213,7 @@ function useDeepResearch() {
           // Track the request
           rateLimiter.trackRequest(searchModel);
           
-          console.log(`Processing search task: ${item.query}`);
+          logger.info(`Processing search task: ${item.query}`);
           
           const searchResult = streamText({
             model: provider(searchModel, { useSearchGrounding: true }),
@@ -203,13 +242,13 @@ function useDeepResearch() {
               content += part.textDelta;
               taskStore.updateTask(item.query, { learning: content });
             } else if (part.type === "reasoning") {
-              console.log("reasoning", part.textDelta);
+              logger.info("reasoning", part.textDelta);
             } else if (part.type === "source") {
               // Process source with enhanced metadata
-              console.log("Received source:", part.source);
+              logger.info("Received source:", part.source);
               
               if (!part.source.url) {
-                console.warn("Received source without URL, skipping:", part.source);
+                logger.warn("Received source without URL, skipping:", part.source);
                 continue;
               }
               
@@ -218,19 +257,19 @@ function useDeepResearch() {
                 sourceType: part.source.sourceType || "secondary", // Default type
                 id: `source-${Date.now()}-${sources.length + 1}`
               };
-              console.log("Enhanced source created:", enhancedSource);
+              logger.info("Enhanced source created:", enhancedSource);
               sources.push(enhancedSource);
-              console.log("Sources array now has", sources.length, "sources");
+              logger.info("Sources array now has", sources.length, "sources");
               
               // Parse JSON data from content to extract source metadata if available
               try {
                 const sourceData = parsePartialJson(removeJsonMarkdown(content));
-                console.log("Parsed source data:", sourceData);
+                logger.info("Parsed source data:", sourceData);
                 if (sourceData.state === "successful-parse" && sourceData.value) {
                   sourcesData = sourceData.value;
                   // Match source metadata with URL
                   const matchingSourceData = sourcesData.find((s: any) => s.url === enhancedSource.url);
-                  console.log("Matching source data found:", matchingSourceData);
+                  logger.info("Matching source data found:", matchingSourceData);
                   if (matchingSourceData) {
                     enhancedSource.sourceType = matchingSourceData.sourceType || "secondary";
                     enhancedSource.credibilityScore = matchingSourceData.credibilityScore;
@@ -238,16 +277,16 @@ function useDeepResearch() {
                     enhancedSource.publicationDate = matchingSourceData.publicationDate;
                     enhancedSource.authorName = matchingSourceData.authorName;
                     enhancedSource.publisherName = matchingSourceData.publisherName;
-                    console.log("Updated enhanced source with metadata:", enhancedSource);
+                    logger.info("Updated enhanced source with metadata:", enhancedSource);
                   }
                 }
               } catch (e) {
-                console.error("Error parsing source metadata:", e);
+                logger.error("Error parsing source metadata:", e);
               }
             }
           }
           
-          console.log(`Task complete: ${item.query}. Found ${sources.length} sources.`);
+          logger.info(`Task complete: ${item.query}. Found ${sources.length} sources.`);
           
           // Make sure all sources have titles
           const processedSources = sources.map(source => {
@@ -257,9 +296,9 @@ function useDeepResearch() {
             return source;
           });
           
-          console.log("Processed sources ready for update:", processedSources);
+          logger.info("Processed sources ready for update:", processedSources);
           taskStore.updateTask(item.query, { state: "completed", sources: processedSources });
-          console.log("Task updated with sources:", item.query);
+          logger.info("Task updated with sources:", item.query);
         } catch (error) {
           if (isRateLimitError(error)) {
             rateLimiter.handleRateLimitError(searchModel, error);
@@ -277,7 +316,7 @@ function useDeepResearch() {
       });
     }
     
-    console.log("All search tasks completed");
+    logger.info("All search tasks completed");
   }
 
   async function reviewSearchResult() {
@@ -379,7 +418,7 @@ function useDeepResearch() {
       return;
     }
 
-    console.log("Starting report generation with tasks:", tasks.length);
+    logger.info("Starting report generation with tasks:", tasks.length);
     
     while (retryCount < maxRetries) {
       try {
@@ -396,7 +435,7 @@ function useDeepResearch() {
           finalReport.includes("# ") && finalReport.includes("[]")
         );
         
-        console.log("Report generation parameters:", {
+        logger.info("Report generation parameters:", {
           model: thinkingModel,
           articleType,
           tasksCount: tasks.length,
@@ -425,7 +464,7 @@ function useDeepResearch() {
           ].join("\n\n");
         }
 
-        console.log("Sending report generation prompt to model");
+        logger.info("Sending report generation prompt to model");
         
         const result = streamText({
           model: provider(thinkingModel),
@@ -433,7 +472,7 @@ function useDeepResearch() {
           prompt: prompt,
           experimental_transform: smoothStream(),
           onError: (error) => {
-            console.error("Stream error in report generation:", error);
+            logger.error("Stream error in report generation:", error);
             if (isRateLimitError(error)) {
               rateLimiter.handleRateLimitError(thinkingModel, error);
               toast.error(`Rate limit exceeded. Please try again later.`);
@@ -444,12 +483,12 @@ function useDeepResearch() {
           },
         });
 
-        console.log("Streaming started, awaiting responses...");
+        logger.info("Streaming started, awaiting responses...");
         
         // Add a fallback timeout for the generation
         const timeout = setTimeout(() => {
           if (!content) {
-            console.warn("Report generation timed out after 60s with no content");
+            logger.warn("Report generation timed out after 60s with no content");
             // Add minimal report content to avoid complete failure
             const fallbackContent = `# ${query}\n\nUnable to generate a complete report at this time. Please try again later.`;
             content = fallbackContent;
@@ -460,17 +499,17 @@ function useDeepResearch() {
         for await (const textPart of result.textStream) {
           content += textPart;
           taskStore.updateFinalReport(content);
-          console.log("Received content chunk, current length:", content.length);
+          logger.info("Received content chunk, current length:", content.length);
         }
         
         clearTimeout(timeout);
         
-        console.log("Stream completed successfully, final content length:", content.length);
+        logger.info("Stream completed successfully, final content length:", content.length);
 
         // If we got here, the stream completed successfully
         break;
       } catch (error) {
-        console.error(`Report generation attempt ${retryCount + 1} failed:`, error);
+        logger.error(`Report generation attempt ${retryCount + 1} failed:`, error);
         
         if (isRateLimitError(error)) {
           rateLimiter.handleRateLimitError(thinkingModel, error);
@@ -504,7 +543,7 @@ function useDeepResearch() {
     }
 
     if (!content) {
-      console.error("No content was generated after all attempts");
+      logger.error("No content was generated after all attempts");
       toast.error("No content was generated. Please try again.");
       
       // Set minimal fallback content
@@ -521,24 +560,24 @@ function useDeepResearch() {
         .replaceAll("**", "")
         .trim();
       
-      console.log("Setting report title:", title);
+      logger.info("Setting report title:", title);
       setTitle(title);
       
       const sources = flat(
         tasks.map((item) => (item.sources ? item.sources : []))
       );
       
-      console.log("Setting sources count:", sources.length);
+      logger.info("Setting sources count:", sources.length);
       setSources(sources);
       
       const id = save(taskStore.backup());
-      console.log("Saving report with ID:", id);
+      logger.info("Saving report with ID:", id);
       setId(id);
       
       toast.success("Report generated successfully!");
       return content;
     } catch (error) {
-      console.error("Error processing report:", error);
+      logger.error("Error processing report:", error);
       const errorMessage = parseError(error);
       toast.error(`Error saving report: ${errorMessage}`);
       throw error;
@@ -610,7 +649,7 @@ function useDeepResearch() {
       if (isRateLimitError(error)) {
         rateLimiter.handleRateLimitError(thinkingModel, error);
       } else {
-        console.error(error);
+        logger.error(error);
       }
     }
   }

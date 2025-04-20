@@ -69,15 +69,6 @@
     @apply bg-slate-300;
   }
 
-  .cm-activeLineGutter,
-  milkdown-code-block .cm-editor {
-    @apply bg-transparent;
-  }
-
-  milkdown-code-block .cm-gutters {
-    @apply hidden;
-  }
-
   milkdown-table-block svg,
   milkdown-link-edit > .link-edit > .button > svg,
   milkdown-link-preview > .link-preview > .link-icon > svg,
@@ -91,30 +82,40 @@
   }
 
   milkdown-code-block {
-    @apply bg-slate-50 dark:bg-slate-800 rounded-md pt-2 p-4 max-sm:pt-1 max-sm:p-2;
-  }
+    @apply bg-slate-50 dark:bg-slate-800 rounded-md p-0;
 
-  milkdown-code-block .list-wrapper {
-    @apply bg-slate-100 dark:bg-slate-800 shadow-md;
+    .cm-editor {
+      @apply bg-transparent;
+    }
+
+    .cm-gutters {
+      @apply hidden;
+    }
+
+    .list-wrapper {
+      @apply bg-slate-100 dark:bg-slate-800 shadow-md;
+    }
+
+    .tools {
+      @apply py-2 px-4 bg-slate-100 rounded-t-sm;
+      .language-button {
+        @apply opacity-100 mb-0;
+      }
+    }
+
+    .codemirror-host {
+      @apply py-2 px-4 max-sm:py-1 max-sm:px-2;
+    }
   }
 
   milkdown-slash-menu {
-    @apply bg-slate-100 shadow-md;
+    @apply bg-slate-100 shadow-md rounded-sm block;
   }
 
   milkdown-slash-menu .tab-group ul,
   milkdown-slash-menu .tab-group ul li,
-  milkdown-slash-menu ul,
-  milkdown-slash-menu .tab-group ul li {
-    @apply mt-0 mb-0;
-  }
-
-  milkdown-slash-menu {
-    @apply rounded-sm block;
-  }
-
   milkdown-slash-menu ul {
-    @apply ps-0;
+    @apply mt-0 mb-0 ps-0;
   }
 
   milkdown-slash-menu .tab-group ul li.selected {
@@ -123,7 +124,10 @@
 
   milkdown-slash-menu .menu-groups .menu-group li.hover,
   milkdown-slash-menu .menu-groups .menu-group li.active {
-    @apply bg-slate-200 transition-colors;
+    @apply bg-slate-200;
+    -webkit-transition: background-color 0.2s ease;
+    -moz-transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease;
   }
 
   milkdown-table-block .cell-handle {
@@ -140,21 +144,6 @@
 
   span[data-type="math_inline"] {
     @apply text-inherit;
-  }
-
-  milkdown-code-block {
-    @apply p-0;
-
-    .tools {
-      @apply py-2 px-4 bg-slate-100 rounded-t-sm;
-      .language-button {
-        @apply opacity-100 mb-0;
-      }
-    }
-
-    .codemirror-host {
-      @apply py-2 px-4;
-    }
   }
 }
 

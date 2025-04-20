@@ -6,6 +6,7 @@
  * - Usage tracking
  * - Rate limiting support
  */
+import logger from "@/utils/logger"; // Import the new logger
 
 interface ApiKeyUsage {
   key: string;
@@ -37,7 +38,13 @@ class ApiKeyManager {
     if (typeof keys === 'string') {
       // Split by commas and trim whitespace
       const keyArray = keys.split(',').map(key => key.trim()).filter(Boolean);
+      
+      // Clear existing keys to prevent duplicates
+      this.keys = [];
       this.keys.push(...keyArray);
+      
+      console.log(`[DEBUG] ApiKeyManager: Added ${keyArray.length} keys. First key starts with: ${keyArray[0]?.substring(0, 4) || "none"}`);
+      logger.info(`Added ${keyArray.length} API key(s) from string input`);
       
       // Initialize usage tracking for each key
       keyArray.forEach(key => {
@@ -51,8 +58,13 @@ class ApiKeyManager {
         }
       });
     } else if (Array.isArray(keys)) {
+      // Clear existing keys to prevent duplicates
+      this.keys = [];
       const validKeys = keys.filter(Boolean);
       this.keys.push(...validKeys);
+      
+      console.log(`[DEBUG] ApiKeyManager: Added ${validKeys.length} keys from array`);
+      logger.info(`Added ${validKeys.length} API key(s) from array input`);
       
       // Initialize usage tracking for each key
       validKeys.forEach(key => {
@@ -66,6 +78,9 @@ class ApiKeyManager {
         }
       });
     }
+    
+    // Log total key count
+    logger.debug(`API key manager now has ${this.keys.length} total keys`);
   }
 
   /**
@@ -73,8 +88,13 @@ class ApiKeyManager {
    */
   getNextKey(): string | null {
     if (this.keys.length === 0) {
+      console.log("[DEBUG] ApiKeyManager: No keys available in key manager");
+      logger.warn("No API keys available in API key manager");
       return null;
     }
+    
+    // Debug: Log all available keys (masked)
+    console.log(`[DEBUG] ApiKeyManager: ${this.keys.length} keys available. First key starts with: ${this.keys[0]?.substring(0, 4) || "none"}`);
     
     // Round-robin selection
     const key = this.keys[this.currentKeyIndex];
@@ -92,6 +112,9 @@ class ApiKeyManager {
       usage.usageCount++;
       usage.lastUsed = Date.now();
       this.keyUsage.set(key, usage);
+      
+      console.log(`[DEBUG] ApiKeyManager: Using key: ${key.substring(0, 4)}... (usage count: ${usage.usageCount})`);
+      logger.debug(`Using API key: ${maskApiKey(key)} (usage count: ${usage.usageCount})`);
     }
     
     return key;
@@ -109,6 +132,7 @@ class ApiKeyManager {
    */
   getLeastUsedKey(): string | null {
     if (this.keys.length === 0) {
+      logger.warn("No API keys available when requesting least used key");
       return null;
     }
     
@@ -135,6 +159,8 @@ class ApiKeyManager {
       usage.usageCount++;
       usage.lastUsed = Date.now();
       this.keyUsage.set(leastUsed, usage);
+      
+      logger.debug(`Using least used API key: ${maskApiKey(leastUsed)} (usage count: ${usage.usageCount})`);
     }
     
     return leastUsed;
@@ -153,6 +179,8 @@ class ApiKeyManager {
         code: errorCode
       };
       this.keyUsage.set(key, usage);
+      
+      logger.warn(`API key error recorded for key ${maskApiKey(key)}: ${errorMessage} (code: ${errorCode || 'none'}, error count: ${usage.errorCount})`);
     }
   }
 
@@ -167,8 +195,20 @@ class ApiKeyManager {
    * Check if any API keys are available
    */
   hasKeys(): boolean {
-    return this.keys.length > 0;
+    const hasKeys = this.keys.length > 0;
+    logger.debug(`API key availability check: ${hasKeys ? 'Keys available' : 'No keys available'}`);
+    return hasKeys;
   }
+}
+
+/**
+ * Mask API key for safe logging
+ */
+function maskApiKey(apiKey: string): string {
+  if (!apiKey || apiKey.length < 8) {
+    return '****';
+  }
+  return `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
 }
 
 // Create a singleton instance for the application

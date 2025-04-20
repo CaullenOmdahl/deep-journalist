@@ -338,17 +338,42 @@ interface GeminiError {
   };
 }
 
-export function parseError(err: unknown): string {
-  let errorMessage: string = "Unknown Error";
-  if (isString(err)) errorMessage = err;
-  if (isObject(err)) {
-    const { error } = err as { error: APICallError };
-    if (error.responseBody) {
-      const response = JSON.parse(error.responseBody) as GeminiError;
-      errorMessage = `[${response.error.status}]: ${response.error.message}`;
-    } else {
-      errorMessage = `[${error.name}]: ${error.message}`;
+export function parseError(error: unknown): string {
+  if (!error) return "Unknown error occurred";
+  
+  // Check if error is a Response object
+  if (typeof error === 'object' && error !== null) {
+    const err = error as any;
+    
+    // Handle Axios-style errors
+    if (err.response) {
+      const status = err.response.status;
+      const message = err.response.data?.error?.message || err.response.statusText || "Unknown error";
+      return `Error ${status}: ${message}`;
+    }
+    
+    // Handle standard error objects
+    if (err.message) {
+      return err.message;
+    }
+    
+    // Handle error.toString() if it has a reasonable implementation
+    try {
+      const stringified = err.toString();
+      if (stringified !== '[object Object]') {
+        return stringified;
+      }
+    } catch (e) {
+      // Ignore toString errors
+    }
+    
+    // For unknown object errors, try to stringify
+    try {
+      return JSON.stringify(err);
+    } catch (e) {
+      // Circular structure or other JSON errors
     }
   }
-  return errorMessage;
+  
+  return "Unknown error occurred";
 }

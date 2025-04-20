@@ -55,6 +55,7 @@ function useModel() {
 
   return {
     modelList,
+    setModelList, // Expose setModelList to allow direct updates
     refresh,
   };
 }

@@ -135,11 +135,21 @@ function Topic() {
   }
 
   async function handleSubmit(values: z.infer<typeof formSchema>) {
+    console.log("Topic handleSubmit triggered with values:", values);
     const { apiKey, accessPassword } = useSettingStore.getState();
+    console.log("API key exists:", !!apiKey, "Access password exists:", !!accessPassword);
+    
     if (apiKey || accessPassword) {
+      if (values.inputType === "url" && !extractedContent) {
+        toast.error("Please extract the content from the URL before submitting.");
+        return;
+      }
+
       const { id, setQuestion } = useTaskStore.getState();
+      console.log("Current research ID:", id);
       setIsThinking(true);
       if (id !== "") {
+        console.log("Creating new research session");
         createNewResearch();
         if (values.inputType === "url") {
           form.setValue("sourceUrl", values.sourceUrl);
@@ -150,8 +160,10 @@ function Topic() {
       
       // If URL is selected but no extraction has been done yet, extract first
       if (values.inputType === "url" && !extractedContent && values.sourceUrl) {
+        console.log("URL extraction needed, attempting to extract:", values.sourceUrl);
         try {
           await handleExtractUrl();
+          console.log("URL extraction completed:", extractedContent);
         } catch (error) {
           console.error("Error extracting URL during submit:", error);
         }
@@ -160,19 +172,31 @@ function Topic() {
       // Set the question based on input type
       let question;
       if (values.inputType === "url") {
+        console.log("Preparing URL-based question");
         if (extractedContent?.title) {
           question = `Research about: ${extractedContent.title} [URL: ${values.sourceUrl}] [Time: ${values.timeframe}, Region: ${values.geo}]`;
         } else {
           question = `Research about: ${values.sourceUrl} [Time: ${values.timeframe}, Region: ${values.geo}]`;
         }
       } else {
+        console.log("Preparing summary-based question");
         question = `${values.eventSummary} [Time: ${values.timeframe}, Region: ${values.geo}]`;
       }
       
+      console.log("Final question being set:", question);
       setQuestion(question);
-      await askQuestions();
-      setIsThinking(false);
+      
+      try {
+        console.log("Calling askQuestions()");
+        await askQuestions();
+        console.log("askQuestions() completed successfully");
+      } catch (error) {
+        console.error("Error in askQuestions():", error);
+      } finally {
+        setIsThinking(false);
+      }
     } else {
+      console.log("No API key or access password, opening settings");
       const { setOpenSetting } = useGlobalStore.getState();
       setOpenSetting(true);
     }

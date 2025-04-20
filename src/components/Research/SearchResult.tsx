@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import dynamic from "next/dynamic";
 import { useState, useEffect, useLayoutEffect } from "react";
@@ -20,6 +19,9 @@ import {
 } from "lucide-react";
 import { Crepe } from "@milkdown/crepe";
 import { replaceAll, getHTML } from "@milkdown/kit/utils";
+// Add these imports for Milkdown plugins
+import { commonmark } from "@milkdown/preset-commonmark";
+import { editorViewOptionsCtx } from "@milkdown/core";
 import { Button } from "@/components/Button";
 import {
   Form,
@@ -244,6 +246,8 @@ function SearchResult() {
   console.log("Total sources count:", allSources.length);
 
   useLayoutEffect(() => {
+    if (!document) return;
+    
     const crepe = new Crepe({
       defaultValue: "",
       root: document.createDocumentFragment(),
@@ -255,15 +259,30 @@ function SearchResult() {
       },
     });
 
-    crepe
-      .setReadonly(true)
+    // Create the editor without any plugins first, then use commonmark
+    crepe.editor
+      .use(commonmark)
+      .config((ctx) => {
+        ctx.update(editorViewOptionsCtx, (prev) => ({
+          ...prev,
+          editable: () => false,
+        }));
+      })
       .create()
       .then(() => {
         setMilkdownEditor(crepe);
+        console.log("SearchResult Milkdown editor created successfully");
+      })
+      .catch(error => {
+        console.error("Error creating Milkdown editor in SearchResult:", error);
       });
 
     return () => {
-      crepe.destroy();
+      try {
+        crepe.destroy();
+      } catch (error) {
+        console.error("Error destroying Milkdown editor:", error);
+      }
     };
   }, []);
 

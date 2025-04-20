@@ -54,7 +54,7 @@ export default function SourceValidator({ url, title, onValidated }: SourceValid
       const result = assessDomainReputation(url);
       setReputation(result);
       
-      if (onValidated) {
+      if (onValidated && result) {
         onValidated(result.score);
       }
     }
@@ -208,4 +208,4 @@ export default function SourceValidator({ url, title, onValidated }: SourceValid
       </CardFooter>
     </Card>
   );
-} 
+}

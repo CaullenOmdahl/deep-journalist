@@ -4,28 +4,17 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
-  BarChart2,
   Check,
   ChevronDown,
   Edit,
   ExternalLink,
   Eye,
   Info,
-  LineChart,
-  Shield,
   ThumbsUp,
-  X,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/Button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   Accordion,
   AccordionContent,
@@ -37,12 +26,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Progress } from "@/components/ui/progress";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Tabs,
   TabsContent,
@@ -131,9 +114,9 @@ export default function BiasDetector({ text, onNeutralize, readonly = false }: B
 
   // Group biased phrases by type for better organization
   const getPhrasesByType = useCallback(() => {
-    if (!biasResult) return {};
+    if (!biasResult) return {} as Record<BiasType, BiasedPhrase[]>;
     
-    return biasResult.biasedPhrases.reduce((grouped, phrase) => {
+    return biasResult.biasedPhrases.reduce<Record<BiasType, BiasedPhrase[]>>((grouped, phrase) => {
       if (!grouped[phrase.type]) {
         grouped[phrase.type] = [];
       }
@@ -436,4 +419,4 @@ export default function BiasDetector({ text, onNeutralize, readonly = false }: B
       </CollapsibleContent>
     </Collapsible>
   );
-} 
+}

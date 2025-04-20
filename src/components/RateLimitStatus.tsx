@@ -9,6 +9,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+/**
+ * RateLimitStatus Component
+ * 
+ * Displays the rate limit status and cooldown time for the current AI model.
+ * Shows a warning when the model is in a cooldown period due to rate limiting.
+ */
 export default function RateLimitStatus() {
   const { thinkingModel } = useSettingStore();
   const [cooldownTime, setCooldownTime] = useState<number>(0);
@@ -44,7 +50,7 @@ export default function RateLimitStatus() {
     <div className="flex items-center gap-2 text-yellow-600 bg-yellow-50 px-3 py-2 rounded-md animate-pulse">
       <AlertCircle className="h-4 w-4" />
       <span className="text-sm font-medium">
-        Rate limit cooldown: {Math.ceil(cooldownTime)} seconds
+        Rate limit cooldown: {Math.ceil(cooldownTime / 1000)} seconds
       </span>
       <TooltipProvider>
         <Tooltip>
@@ -61,4 +67,4 @@ export default function RateLimitStatus() {
       </TooltipProvider>
     </div>
   );
-} 
+}
