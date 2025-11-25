@@ -1,9 +1,10 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useTranslation } from "react-i18next";
-import { Download, FileText, Signature, FileEdit, AlertCircle, MessageSquare, AlertTriangle, Scale, Radar, Layout, X, Globe, Check, Twitter, Facebook, Linkedin, CheckCircle } from "lucide-react";
+import { Download, FileText, Signature, FileEdit, AlertCircle, MessageSquare, AlertTriangle, Scale, Radar, Layout, X, Globe, Check, Twitter, Facebook, Linkedin, CheckCircle, FileJson, FileCode, FileType } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/Button";
+import { CopyButton } from "@/components/ui/copy-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useTaskStore } from "@/store/task";
 import { getSystemPrompt } from "@/utils/deep-research";
-import { downloadFile } from "@/utils/file";
+import { downloadFile, exportAsJSON, exportAsHTML, exportAsPlainText, ExportData } from "@/utils/file";
 import { Badge } from "@/components/ui/badge";
 import { 
   Select,
@@ -48,6 +49,10 @@ import CitationManager from "./CitationManager";
 import StoryTracker from "./StoryTracker";
 import ArticleStructureEditor from "./ArticleStructureEditor";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { streamText, smoothStream } from "ai";
+import { useModelProvider } from "@/hooks/useAiProvider";
+import { useSettingStore } from "@/store/setting";
+import rateLimiter from "@/utils/rate-limiter";
 
 const MilkdownEditor = dynamic(() => import("@/components/MilkdownEditor"));
 const Artifact = dynamic(() => import("@/components/Artifact"));
@@ -63,6 +68,8 @@ function FinalReport() {
   const { t } = useTranslation();
   const taskStore = useTaskStore();
   const { writeFinalReport } = useDeepResearch();
+  const { createProvider } = useModelProvider();
+  const { networkingModel } = useSettingStore();
   const [isRewriting, setIsRewriting] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState<string>("en");
@@ -236,16 +243,28 @@ function FinalReport() {
       toast.error("No content to translate");
       return;
     }
-    
+
+    // Use the configured networking model or default to gemini-2.0-flash
+    const translationModel = networkingModel || "gemini-2.0-flash";
+
+    // Check if model is in cooldown
+    if (rateLimiter.isInCooldown(translationModel)) {
+      const remaining = rateLimiter.getCooldownTimeRemaining(translationModel);
+      toast.error(`Model is cooling down. Please wait ${remaining} seconds.`);
+      return;
+    }
+
     try {
       setIsTranslating(true);
-      
+
       // Create a provider for the Google AI API
       const provider = createProvider("google");
-      const translationModel = "gemini-2.0-flash-exp";
-      
+
       toast.info(`Translating to ${languages.find(l => l.code === targetLanguage)?.name}...`);
-      
+
+      // Track the request
+      rateLimiter.trackRequest(translationModel);
+
       const result = await streamText({
         model: provider(translationModel),
         system: "You are a professional translator. Translate the provided content while preserving all formatting, headlines, and paragraph structure. Keep markdown syntax intact. Do not add any additional text or explanations.",
@@ -253,23 +272,39 @@ function FinalReport() {
         experimental_transform: smoothStream(),
         onError: (error) => {
           console.error("Translation error:", error);
+          // Check for rate limit errors
+          if (error && typeof error === 'object') {
+            const err = error as any;
+            if (err.statusCode === 429 || err.code === 429) {
+              rateLimiter.handleRateLimitError(translationModel, error);
+              return;
+            }
+          }
           toast.error("Translation failed. Please try again later.");
         },
       });
-      
+
       let translatedContent = "";
-      
+
       for await (const textPart of result.textStream) {
         translatedContent += textPart;
         // You could update a preview state here if needed
       }
-      
+
       // Update the report with the translated content
       taskStore.updateFinalReport(translatedContent);
       toast.success(`Translation to ${languages.find(l => l.code === targetLanguage)?.name} completed`);
-      
+
     } catch (error) {
       console.error("Translation error:", error);
+      // Check for rate limit errors
+      if (error && typeof error === 'object') {
+        const err = error as any;
+        if (err.statusCode === 429 || err.code === 429 || err.message?.includes('rate limit')) {
+          rateLimiter.handleRateLimitError(translationModel, error);
+          return;
+        }
+      }
       toast.error("Translation failed. Please try again later.");
     } finally {
       setIsTranslating(false);
@@ -330,167 +365,67 @@ function FinalReport() {
           {t("research.finalReport.title")}
         </h3>
         <div className="flex items-center gap-2">
-          <button 
-            className="px-2 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-900 border border-yellow-300 rounded"
-            onClick={() => {
-              const sampleReport = `# AI in Modern Journalism: Transforming How We Report and Consume News
+          {taskStore.finalReport && (
+            <CopyButton
+              text={getFinalReportContent()}
+              label="Copy Article"
+              successMessage="Full article copied to clipboard"
+              variant="outline"
+              size="sm"
+            />
+          )}
+          {/* Prominent Article Type Selector */}
+          <div className="flex items-center gap-1 border rounded-md p-0.5 bg-muted/50">
+            <TooltipProvider>
+              {(Object.keys(articleTypeLabels) as Array<keyof typeof articleTypeLabels>).map((type) => (
+                <Tooltip key={type}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={taskStore.articleType === type ? "default" : "ghost"}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => handleArticleTypeChange(type)}
+                    >
+                      {articleTypeLabels[type].label.replace(" Article", "").replace(" Report", "")}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[200px]">
+                    <p className="font-medium">{articleTypeLabels[type].label}</p>
+                    <p className="text-xs text-muted-foreground">{articleTypeLabels[type].description}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </TooltipProvider>
+          </div>
 
-This comprehensive review explores the rapidly evolving landscape of artificial intelligence in journalism and its profound impact on content creation, editorial processes, and the media industry as a whole.
-
-## The Current State of AI in Newsrooms
-
-The integration of artificial intelligence in newsrooms has accelerated dramatically in recent years. Major news organizations including Bloomberg, Associated Press, and The Washington Post have implemented sophisticated AI systems for various journalistic functions. These systems assist with data analysis, content generation, and even identifying trending stories before they go viral.
-
-Journalists today are increasingly working alongside AI tools that can:
-- Generate basic news reports from structured data
-- Transcribe and analyze interviews efficiently
-- Identify patterns across large datasets
-- Create personalized news experiences for readers
-- Flag potentially misleading information
-
-According to a 2023 survey by the Reuters Institute, approximately 37% of news organizations now use some form of AI in their content production pipeline. This percentage represents a significant increase from just 14% in 2018.
-
-## Ethical Concerns and Challenges
-
-Despite the advantages, the rise of AI in journalism raises significant ethical questions. Critics worry about the potential for bias in AI-generated content, as machine learning systems often inherit biases present in their training data.
-
-### Transparency Issues
-
-There's also ongoing debate about disclosure requirements. Should readers be informed when content is partially or fully generated by AI? Some organizations have established clear policies:
-
-* The Associated Press labels automated content
-* The Guardian discloses AI assistance in data-heavy stories
-* Reuters maintains a human editor review process for all AI outputs
-
-"Transparency about AI use is not just an ethical consideration but increasingly a matter of maintaining reader trust," notes Professor Emily Chen, media ethics researcher at Columbia University.
-
-### Job Displacement Concerns
-
-Many journalists fear job displacement as AI systems become more capable. However, industry experts point to a transformation rather than wholesale replacement:
-
-"AI excels at routine, formulaic reporting, freeing human journalists to focus on investigative work, analysis, and storytelling," explains Dr. Maria Rodriguez, media technology researcher at Columbia University.
-
-## The Future of AI-Human Collaboration
-
-The most promising developments appear to be in human-AI collaboration models. These hybrid approaches leverage AI for data processing and initial drafts while relying on human journalists for judgment, context, and ethical decision-making.
-
-Several innovative models are emerging:
-1. AI research assistants that gather information from diverse sources
-2. Co-writing systems where journalists refine AI-generated drafts
-3. Automated fact-checking tools that support human verification
-4. Multilingual translation systems allowing global news accessibility
-
-## Economic Implications for Media Organizations
-
-The economic case for AI in journalism is compelling. Smaller newsrooms with limited resources can now produce more content at lower costs. Local news outlets, which have been especially hard-hit by revenue challenges, may find particular value in automating routine coverage of municipal meetings, sports events, and financial reports.
-
-A case study of five regional newspapers implementing AI systems showed an average productivity increase of 27% while maintaining human editorial oversight.
-
-## Conclusion
-
-As AI continues to evolve, journalism will likely transform in ways we cannot fully predict. The fundamental skills of critical thinking, ethical judgment, and storytelling will remain distinctly human advantages. The most successful media organizations will be those that thoughtfully integrate AI capabilities while preserving the core values that make journalism essential to society.
-
-The coming decade will be defined not by whether AI replaces journalists, but by how effectively humans and machines collaborate to create more informative, accessible, and trustworthy news.`;
-              
-              taskStore.updateFinalReport(sampleReport);
-              
-              setTimeout(() => {
-                console.log("Debug content added, length:", sampleReport.length);
-                console.log("First 50 chars:", sampleReport.substring(0, 50));
-              }, 100);
-            }}
-          >
-            Debug: Add Sample Content
-          </button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1">
-                <FileEdit className="h-4 w-4" />
-                {articleTypeLabels[taskStore.articleType || 'news'].label}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="end">
-              <div className="grid gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium">Article Type</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Select the type of article you want to write
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <Select 
-                    defaultValue={taskStore.articleType || 'news'} 
-                    onValueChange={(value) => handleArticleTypeChange(value as any)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="news">
-                        <div className="flex flex-col">
-                          <span>News Article</span>
-                          <span className="text-xs text-muted-foreground">
-                            {articleTypeLabels.news.description}
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="feature">
-                        <div className="flex flex-col">
-                          <span>Feature Article</span>
-                          <span className="text-xs text-muted-foreground">
-                            {articleTypeLabels.feature.description}
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="investigative">
-                        <div className="flex flex-col">
-                          <span>Investigative Report</span>
-                          <span className="text-xs text-muted-foreground">
-                            {articleTypeLabels.investigative.description}
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="explainer">
-                        <div className="flex flex-col">
-                          <span>Explainer</span>
-                          <span className="text-xs text-muted-foreground">
-                            {articleTypeLabels.explainer.description}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          className="w-full" 
-                          size="lg"
-                          disabled={isRewriting} 
-                          onClick={handleRewriteArticle}
-                        >
-                          {isRewriting ? (
-                            <>
-                              <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
-                              Generating Article...
-                            </>
-                          ) : (
-                            <>
-                              <FileText className="mr-2 h-5 w-5" />
-                              Write Article
-                            </>
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Generate a journalistic article based on your sources and research</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Write Article Button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  className="h-8"
+                  disabled={isRewriting}
+                  onClick={handleRewriteArticle}
+                >
+                  {isRewriting ? (
+                    <>
+                      <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Write Article
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Generate a journalistic article based on your sources and research</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" disabled={isTranslating}>
@@ -546,7 +481,76 @@ The coming decade will be defined not by whether AI replaces journalists, but by
                 <Signature className="mr-2 h-4 w-4" />
                 <span>Print / Save as PDF</span>
               </DropdownMenuItem>
-              
+              <DropdownMenuItem
+                onClick={() => {
+                  const exportData: ExportData = {
+                    title: taskStore.title,
+                    finalReport: taskStore.finalReport,
+                    sources: taskStore.sources,
+                    claims: claims.map(c => ({ id: c.id, text: c.text, status: c.status, details: c.details })),
+                    metadata: {
+                      articleType: taskStore.articleType || 'news',
+                      createdAt: new Date().toISOString(),
+                      wordCount: taskStore.finalReport.split(/\s+/).length
+                    }
+                  };
+                  downloadFile(
+                    exportAsJSON(exportData),
+                    `${taskStore.title}.json`,
+                    "application/json;charset=utf-8"
+                  );
+                }}
+              >
+                <FileJson className="mr-2 h-4 w-4" />
+                <span>JSON (.json)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const exportData: ExportData = {
+                    title: taskStore.title,
+                    finalReport: taskStore.finalReport,
+                    sources: taskStore.sources,
+                    claims: claims.map(c => ({ id: c.id, text: c.text, status: c.status, details: c.details })),
+                    metadata: {
+                      articleType: taskStore.articleType || 'news',
+                      createdAt: new Date().toISOString(),
+                      wordCount: taskStore.finalReport.split(/\s+/).length
+                    }
+                  };
+                  downloadFile(
+                    exportAsHTML(exportData),
+                    `${taskStore.title}.html`,
+                    "text/html;charset=utf-8"
+                  );
+                }}
+              >
+                <FileCode className="mr-2 h-4 w-4" />
+                <span>HTML (.html)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const exportData: ExportData = {
+                    title: taskStore.title,
+                    finalReport: taskStore.finalReport,
+                    sources: taskStore.sources,
+                    claims: claims.map(c => ({ id: c.id, text: c.text, status: c.status, details: c.details })),
+                    metadata: {
+                      articleType: taskStore.articleType || 'news',
+                      createdAt: new Date().toISOString(),
+                      wordCount: taskStore.finalReport.split(/\s+/).length
+                    }
+                  };
+                  downloadFile(
+                    exportAsPlainText(exportData),
+                    `${taskStore.title}.txt`,
+                    "text/plain;charset=utf-8"
+                  );
+                }}
+              >
+                <FileType className="mr-2 h-4 w-4" />
+                <span>Plain Text (.txt)</span>
+              </DropdownMenuItem>
+
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Social Media</DropdownMenuLabel>
               
@@ -816,34 +820,6 @@ The coming decade will be defined not by whether AI replaces journalists, but by
         )}
       </div>
 
-      <div className="print:hidden">
-        <WordCountIndicator 
-          content={taskStore.finalReport.replace(/#+\s/g, "").replace(/[*-]\s/g, "")} 
-          articleType={taskStore.articleType} 
-        />
-        
-        <ContentWarningDialog 
-          contentWarnings={contentWarnings} 
-          onAdd={handleAddContentWarning}
-          onRemove={handleRemoveContentWarning}
-        />
-        
-        <BiasDetector 
-          content={taskStore.finalReport}
-          onNeutralize={handleBiasNeutralize}
-        />
-        
-        {taskStore.sources.length > 0 && (
-          <CitationManager sources={taskStore.sources} />
-        )}
-        
-        <ArticleStructureEditor onApplyTemplate={handleApplyTemplate} />
-        
-        <JournalisticMetricsPanel content={taskStore.finalReport} sources={taskStore.sources} />
-        
-        <StoryTracker finalReport={taskStore.finalReport} />
-      </div>
-
       {taskStore.finalReport ? (
         <>
           <div className="article-content prose dark:prose-invert prose-sm sm:prose-base lg:prose-lg max-w-none">
@@ -875,11 +851,31 @@ The coming decade will be defined not by whether AI replaces journalists, but by
           </div>
           <Separator className="mt-4 print:hidden" />
           <div className="pt-3 print:hidden">
-            <h3 className="font-semibold mb-3">
-              {t("research.finalReport.researchedInfor", {
-                total: taskStore.sources.length,
-              })}
-            </h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold">
+                {t("research.finalReport.researchedInfor", {
+                  total: taskStore.sources.length,
+                })}
+              </h3>
+              {taskStore.sources.length > 0 && (
+                <div className="flex gap-2">
+                  <CopyButton
+                    text={taskStore.sources.map((s, idx) => `${idx + 1}. ${s.title || s.url} - ${s.url}`).join('\n')}
+                    label="Copy Sources"
+                    successMessage="All sources copied to clipboard"
+                    variant="ghost"
+                    size="sm"
+                  />
+                  <CopyButton
+                    text={taskStore.sources.map(s => s.url).join('\n')}
+                    label="Copy URLs"
+                    successMessage="Source URLs copied to clipboard"
+                    variant="ghost"
+                    size="sm"
+                  />
+                </div>
+              )}
+            </div>
             {taskStore.sources.length === 0 ? (
               <div>No source...</div>
             ) : (

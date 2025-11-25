@@ -9,11 +9,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Pencil, Save, CodeXml, Eye } from "lucide-react";
 import { Crepe } from "@milkdown/crepe";
-import { editorViewOptionsCtx } from "@milkdown/kit/core";
 import { replaceAll } from "@milkdown/kit/utils";
-import { commonmark } from "@milkdown/preset-commonmark";
-import { diagram } from "@xiangfa/milkdown-plugin-diagram";
-import { math } from "@xiangfa/milkdown-plugin-math";
 import { MarkdownEditor } from "@xiangfa/mdeditor";
 import FloatingMenu from "@/components/FloatingMenu";
 import { Button } from "@/components/Button";
@@ -84,15 +80,15 @@ function MilkdownEditor(props: EditorProps) {
     }
   }
 
+  // Update editor content when defaultValue changes (after initial render)
   useEffect(() => {
     if (!editorReady) return;
-    
+
     const timer = setTimeout(() => {
       try {
         if (mode === "WYSIWYM" && milkdownEditor) {
-          if (milkdownEditor.editor.status === "Created") {
-            replaceAll(defaultValue || "")(milkdownEditor.editor.ctx as any);
-          }
+          // Use Crepe's setMarkdown method for reliable content updates
+          milkdownEditor.setMarkdown(defaultValue || "");
         } else if (mode === "markdown" && markdownEditor) {
           if (markdownEditor.status === "create") {
             markdownEditor.update(defaultValue || "");
@@ -100,13 +96,21 @@ function MilkdownEditor(props: EditorProps) {
         }
       } catch (error) {
         console.error("Error updating editor content:", error);
+        // Fallback: try replaceAll if setMarkdown fails
+        try {
+          if (mode === "WYSIWYM" && milkdownEditor?.editor?.status === "Created") {
+            replaceAll(defaultValue || "")(milkdownEditor.editor.ctx as any);
+          }
+        } catch (fallbackError) {
+          console.error("Fallback update also failed:", fallbackError);
+        }
       }
     }, 100);
-    
+
     return () => clearTimeout(timer);
   }, [mode, milkdownEditor, markdownEditor, defaultValue, editorReady]);
 
-  // Initialize the WYSIWYM editor
+  // Initialize the WYSIWYM editor (only once on mount)
   useLayoutEffect(() => {
     if (!milkdownEditorRef.current) {
       console.warn("Milkdown editor ref not available");
@@ -114,13 +118,16 @@ function MilkdownEditor(props: EditorProps) {
     }
 
     let crepe: Crepe | null = null;
-    
+
+    // Capture the current defaultValue at initialization time
+    const initialContent = defaultValue || "";
+
     const initEditor = async () => {
-      try {      
-        // Create editor instance with correct configuration
+      try {
+        // Create editor instance with actual initial content
         crepe = new Crepe({
           root: milkdownEditorRef.current,
-          defaultValue: "",  // Start with empty - we'll set content after initialization
+          defaultValue: initialContent,
           features: {
             [Crepe.Feature.ImageBlock]: false,
             [Crepe.Feature.Latex]: false,
@@ -131,46 +138,14 @@ function MilkdownEditor(props: EditorProps) {
             },
           },
         });
-        
-        // Apply each plugin individually with type assertions to avoid version conflicts
-        crepe.editor.use(commonmark as any);
-        crepe.editor.use(diagram as any);
-        crepe.editor.use(math as any);
-        
-        // Create the editor after plugins are loaded
-        await crepe.editor.create();
-        
-        // Configure after creation
-        crepe.editor.config((ctx) => {
-          // Use any to bypass type checking for editorViewOptionsCtx
-          (ctx as any).update(editorViewOptionsCtx, (prev: any) => ({
-            ...prev,
-            attributes: {
-              class: "milkdown-editor mx-auto outline-none",
-              spellcheck: "false",
-            },
-          }));
-        });
-        
+
+        // Use Crepe's create method - it handles all internal setup
+        await crepe.create();
+
         // Set read-only state
         await crepe.setReadonly(readOnly);
-        
-        console.log("Milkdown editor created successfully");
-        setMilkdownEditor(crepe);
-        
-        // Set content and mark as ready
-        if (defaultValue && crepe) {
-          try {
-            // Use any to bypass type issues
-            replaceAll(defaultValue)(crepe.editor.ctx as any);
-          } catch (error) {
-            console.error("Failed to set initial content:", error);
-          }
-        }
-        
-        setEditorReady(true);
-        
-        // Set up listeners
+
+        // Set up listeners before setting state to ensure we catch all updates
         crepe.on((listener) => {
           listener.markdownUpdated((ctx, markdown) => {
             setMarkdown(markdown);
@@ -179,13 +154,16 @@ function MilkdownEditor(props: EditorProps) {
             }
           });
         });
+
+        setMilkdownEditor(crepe);
+        setEditorReady(true);
       } catch (error) {
         console.error("Error during Milkdown editor initialization:", error);
       }
     };
 
     initEditor();
-    
+
     return () => {
       try {
         if (crepe) {
@@ -195,7 +173,8 @@ function MilkdownEditor(props: EditorProps) {
         console.error("Error destroying Milkdown editor:", error);
       }
     };
-  }, [t, defaultValue, readOnly, onChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t, readOnly]); // Removed defaultValue and onChange to prevent recreation
 
   useLayoutEffect(() => {
     if (!markdownEditorRef.current) {

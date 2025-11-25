@@ -40,7 +40,7 @@ function ButtonWithTooltip(
       </TooltipProvider>
     );
   } else {
-    return <OriginalButton {...props} />;
+    return <OriginalButton ref={forwardedRef} {...props} />;
   }
 }
 

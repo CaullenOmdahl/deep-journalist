@@ -1,7 +1,7 @@
 "use client";
 import { useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RefreshCw, Check, AlertTriangle, Loader2 } from "lucide-react";
+import { RefreshCw, Check, AlertTriangle, Loader2, Eye, EyeOff } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -74,6 +74,7 @@ function Setting({ open, onClose }: SettingProps) {
     message: string;
   }>({ status: 'idle', message: '' });
   const [formReady, setFormReady] = useState<boolean>(false);
+  const [showApiKey, setShowApiKey] = useState<boolean>(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -291,13 +292,29 @@ function Setting({ open, onClose }: SettingProps) {
                         <span className="ml-1 text-red-500">*</span>
                       </FormLabel>
                       <div className="flex gap-2 items-center">
-                        <FormControl className="flex-1">
-                          <Input
-                            type="password"
-                            placeholder={t("setting.apiKeyPlaceholder")}
-                            {...field}
-                          />
-                        </FormControl>
+                        <div className="flex-1 relative">
+                          <FormControl>
+                            <Input
+                              type={showApiKey ? "text" : "password"}
+                              placeholder={t("setting.apiKeyPlaceholder")}
+                              {...field}
+                              className="pr-10"
+                            />
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowApiKey(!showApiKey)}
+                          >
+                            {showApiKey ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
                         {apiKeyValidation.status === 'validating' && (
                           <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                         )}

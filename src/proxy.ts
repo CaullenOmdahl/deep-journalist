@@ -11,7 +11,7 @@ const allowedOrigins = [
   "http://lz2c5b0.glddns.com:3000",
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Get the referer header
   const referer = request.headers.get('referer') || '';
   console.log('Referer:', referer);

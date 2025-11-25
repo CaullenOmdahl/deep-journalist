@@ -238,21 +238,40 @@ export const perKeyRateLimiter = new PerApiKeyRateLimiter({
 // Global flag to check if rate limiting is enabled
 export const isRateLimitingEnabled = true;
 
+// Fallback models in order of preference (most capable to least)
+// Only Gemini 2.5+ models - older versions removed
+export const FALLBACK_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+  'gemini-2.5-flash-preview-05-20',
+  'gemini-2.5-pro-preview-05-06',
+];
+
+// Models marked as unavailable after actual API errors (404 or explicit deprecation)
+// This list is populated dynamically when we receive API errors
+// Do NOT add models here preemptively - only after confirmed API failures
+export const DEPRECATED_MODELS: string[] = [];
+
 // Default rate limiter class with expected interface for ApiUsageStats
 class DefaultRateLimiter {
-  private cooldowns: Record<string, { until: number }> = {};
+  private cooldowns: Record<string, { until: number; reason?: string }> = {};
+  private exhaustedModels: Set<string> = new Set(); // Models with quota exhausted
+  private unavailableModels: Set<string> = new Set(); // Models confirmed unavailable via API errors
   private modelStats: Record<string, { rpm: number; rpd: number; lastResetRpm: number; lastResetRpd: number }> = {};
 
   constructor() {
     // Initialize tracking
     this.resetDailyCounts();
-    
+
     // Reset RPM counts every minute
     if (typeof window !== 'undefined') {
       setInterval(() => this.resetMinuteCounts(), 60000);
-      
+
       // Reset RPD counts at midnight
       setInterval(() => this.resetDailyCounts(), this.getMsUntilMidnight());
+
+      // Clear exhausted models every hour (quota may reset)
+      setInterval(() => this.clearExhaustedModels(), 3600000);
     }
   }
 
@@ -261,27 +280,194 @@ class DefaultRateLimiter {
    */
   isInCooldown(model: string): boolean {
     if (!this.cooldowns[model]) return false;
-    
+
     const now = Date.now();
     if (now < this.cooldowns[model].until) {
       return true;
     }
-    
+
     // Clear expired cooldown
     delete this.cooldowns[model];
     return false;
   }
 
   /**
-   * Get remaining cooldown time in milliseconds
+   * Get remaining cooldown time in seconds
    */
   getCooldownTimeRemaining(model: string): number {
     if (!this.cooldowns[model]) return 0;
-    
+
     const now = Date.now();
     const timeRemaining = this.cooldowns[model].until - now;
-    
-    return Math.max(0, timeRemaining);
+
+    return Math.max(0, Math.ceil(timeRemaining / 1000));
+  }
+
+  /**
+   * Check if a model's quota is exhausted
+   */
+  isModelExhausted(model: string): boolean {
+    return this.exhaustedModels.has(model);
+  }
+
+  /**
+   * Check if a model has been marked as unavailable (from actual API errors)
+   */
+  isModelDeprecated(model: string): boolean {
+    // Only check models that have been dynamically marked as unavailable
+    // based on actual API responses (404, explicit deprecation errors)
+    return DEPRECATED_MODELS.includes(model) || this.unavailableModels.has(model);
+  }
+
+  /**
+   * Mark a model as unavailable (called when we get 404 or deprecation errors)
+   */
+  markModelUnavailable(model: string, reason?: string): void {
+    this.unavailableModels.add(model);
+    console.log(`[RateLimiter] Model ${model} marked as unavailable${reason ? `: ${reason}` : ''}`);
+  }
+
+  /**
+   * Mark a model as exhausted (daily quota exceeded)
+   */
+  markModelExhausted(model: string): void {
+    this.exhaustedModels.add(model);
+    console.log(`[RateLimiter] Model ${model} marked as exhausted (quota exceeded)`);
+  }
+
+  /**
+   * Clear exhausted models (called periodically to allow retry)
+   */
+  clearExhaustedModels(): void {
+    this.exhaustedModels.clear();
+    console.log('[RateLimiter] Cleared exhausted models list');
+  }
+
+  /**
+   * Get a fallback model when the requested model is unavailable
+   */
+  getFallbackModel(currentModel: string): string | null {
+    for (const fallback of FALLBACK_MODELS) {
+      if (fallback !== currentModel && !this.isInCooldown(fallback) && !this.isModelExhausted(fallback)) {
+        console.log(`[RateLimiter] Suggesting fallback model: ${fallback} (instead of ${currentModel})`);
+        return fallback;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Handle API error from response
+   * Parses the retryDelay from Google's error response and handles 404 errors
+   */
+  handleRateLimitError(model: string, error: unknown): { retryAfterMs: number; isQuotaExhausted: boolean; isModelUnavailable: boolean } {
+    let retryAfterMs = 30000; // Default 30 seconds
+    let isQuotaExhausted = false;
+    let isModelUnavailable = false;
+
+    try {
+      const err = error as any;
+
+      // Check for 404 errors (model not found/unavailable)
+      if (err.status === 404 || err.statusCode === 404 || err.code === 404) {
+        isModelUnavailable = true;
+        this.markModelUnavailable(model, '404 - Model not found');
+        toast.error(`Model ${model} is not available. Switching to alternative model.`, { duration: 5000 });
+        return { retryAfterMs: 0, isQuotaExhausted: false, isModelUnavailable: true };
+      }
+
+      // Try to parse the error response for retryDelay
+      let errorBody: any = null;
+
+      // Handle different error formats
+      if (err.responseBody) {
+        try {
+          errorBody = typeof err.responseBody === 'string' ? JSON.parse(err.responseBody) : err.responseBody;
+        } catch (e) {
+          // Ignore parse errors
+        }
+      } else if (err.error) {
+        errorBody = err.error;
+      } else if (err.details) {
+        errorBody = err.details;
+      }
+
+      // Check for 404 in parsed error body
+      if (errorBody?.error?.code === 404 || errorBody?.code === 404) {
+        isModelUnavailable = true;
+        this.markModelUnavailable(model, 'Model not found');
+        toast.error(`Model ${model} is not available. Switching to alternative model.`, { duration: 5000 });
+        return { retryAfterMs: 0, isQuotaExhausted: false, isModelUnavailable: true };
+      }
+
+      // Check for deprecation/unavailability messages
+      const message = errorBody?.error?.message || errorBody?.message || err.message || '';
+      if (message.includes('is not found') || message.includes('does not exist') || message.includes('deprecated')) {
+        isModelUnavailable = true;
+        this.markModelUnavailable(model, message);
+        toast.error(`Model ${model} is not available. Switching to alternative model.`, { duration: 5000 });
+        return { retryAfterMs: 0, isQuotaExhausted: false, isModelUnavailable: true };
+      }
+
+      // Extract retry delay from Google's error format
+      if (errorBody?.error?.details) {
+        for (const detail of errorBody.error.details) {
+          if (detail['@type']?.includes('RetryInfo') && detail.retryDelay) {
+            // Parse delay like "19.691053405s" or "19s"
+            const delayStr = detail.retryDelay;
+            const match = delayStr.match(/^(\d+(?:\.\d+)?)/);
+            if (match) {
+              retryAfterMs = Math.ceil(parseFloat(match[1]) * 1000);
+              console.log(`[RateLimiter] Parsed retryDelay from API: ${retryAfterMs}ms`);
+            }
+          }
+
+          // Check for quota exhaustion
+          if (detail['@type']?.includes('QuotaFailure')) {
+            for (const violation of detail.violations || []) {
+              if (violation.quotaId?.includes('PerDay') || violation.quotaMetric?.includes('free_tier')) {
+                isQuotaExhausted = true;
+                console.log(`[RateLimiter] Daily quota exhausted for ${model}`);
+              }
+            }
+          }
+        }
+      }
+
+      // Check message for quota exhaustion indicators
+      if (message.includes('quota exceeded') || message.includes('limit: 0')) {
+        isQuotaExhausted = true;
+      }
+
+    } catch (parseError) {
+      console.warn('[RateLimiter] Could not parse rate limit error details:', parseError);
+    }
+
+    // Set cooldown
+    this.cooldowns[model] = {
+      until: Date.now() + retryAfterMs,
+      reason: isQuotaExhausted ? 'quota_exhausted' : 'rate_limited'
+    };
+
+    // Mark as exhausted if quota is exceeded
+    if (isQuotaExhausted) {
+      this.markModelExhausted(model);
+    }
+
+    // Show user-friendly notification
+    if (isQuotaExhausted) {
+      const fallback = this.getFallbackModel(model);
+      if (fallback) {
+        toast.warning(`${model} quota exhausted. Try using ${fallback} instead.`, { duration: 5000 });
+      } else {
+        toast.error(`API quota exhausted for ${model}. Please try again later or add additional API keys.`, { duration: 7000 });
+      }
+    } else {
+      const waitSeconds = Math.ceil(retryAfterMs / 1000);
+      toast.warning(`Rate limited. Waiting ${waitSeconds}s before retry...`);
+    }
+
+    return { retryAfterMs, isQuotaExhausted, isModelUnavailable };
   }
 
   /**
@@ -296,49 +482,52 @@ class DefaultRateLimiter {
         lastResetRpd: Date.now()
       };
     }
-    
+
     this.modelStats[model].rpm += 1;
     this.modelStats[model].rpd += 1;
-    
+
     const limits = this.getModelLimits(model);
-    
+
     // Check if we've exceeded RPM limit
     if (this.modelStats[model].rpm >= limits.rpm) {
       const cooldownTime = 15000; // 15 seconds cooldown
       this.cooldowns[model] = {
-        until: Date.now() + cooldownTime
+        until: Date.now() + cooldownTime,
+        reason: 'rpm_exceeded'
       };
-      
+
       toast.warning(`Rate limit reached for ${model}. Cooling down for 15 seconds.`);
     }
   }
 
   /**
    * Get the limits for a specific model
+   * Updated with Gemini 2.5+ models only (Nov 2025)
    */
   getModelLimits(model: string): { rpm: number; tpm: number; rpd: number } {
-    const defaultLimits = { rpm: 2, tpm: 32000, rpd: 50 };
-    
-    switch (model) {
-      case 'gemini-2.5-pro-exp':
-        return { rpm: 2, tpm: 1000000, rpd: 50 };
-      case 'gemini-2.0-flash':
+    const defaultLimits = { rpm: 15, tpm: 1000000, rpd: 1500 };
+
+    // Normalize model name (remove preview suffixes for matching)
+    const normalizedModel = model.replace(/-preview.*$/, '').replace(/-exp.*$/, '');
+
+    switch (normalizedModel) {
+      // Gemini 2.5 models (current generation)
+      case 'gemini-2.5-pro':
+        return { rpm: 5, tpm: 1000000, rpd: 100 };
+      case 'gemini-2.5-flash':
         return { rpm: 15, tpm: 1000000, rpd: 1500 };
-      case 'gemini-2.0-flash-exp':
-        return { rpm: 10, tpm: 1000000, rpd: 1500 };
-      case 'gemini-2.0-flash-lite':
+      case 'gemini-2.5-flash-lite':
         return { rpm: 30, tpm: 1000000, rpd: 1500 };
-      case 'gemini-2.0-flash-thinking-exp':
+      case 'gemini-2.5-flash-thinking':
         return { rpm: 10, tpm: 4000000, rpd: 1500 };
-      case 'gemini-2.0-flash-thinking-exp-01-21': // Added explicit support for your model
-        return { rpm: 10, tpm: 4000000, rpd: 1500 };
-      case 'gemini-1.5-flash':
-        return { rpm: 15, tpm: 1000000, rpd: 1500 };
-      case 'gemini-1.5-flash-8b':
-        return { rpm: 15, tpm: 1000000, rpd: 1500 };
-      case 'gemini-1.5-pro':
-        return { rpm: 2, tpm: 32000, rpd: 50 };
       default:
+        // Check for model family patterns
+        if (model.includes('2.5') && model.includes('flash')) {
+          return { rpm: 15, tpm: 1000000, rpd: 1500 };
+        }
+        if (model.includes('2.5') && model.includes('pro')) {
+          return { rpm: 5, tpm: 1000000, rpd: 100 };
+        }
         return defaultLimits;
     }
   }
@@ -374,6 +563,8 @@ class DefaultRateLimiter {
       this.modelStats[model].rpd = 0;
       this.modelStats[model].lastResetRpd = Date.now();
     });
+    // Also clear exhausted models at daily reset
+    this.clearExhaustedModels();
   }
 
   /**
@@ -389,13 +580,6 @@ class DefaultRateLimiter {
 
 // Create default rate limiter instance
 const rateLimiter = new DefaultRateLimiter();
-
-// Export all rate limiters
-export {
-  googleGenerativeAiLimiter,
-  perKeyRateLimiter,
-  isRateLimitingEnabled
-};
 
 // Default export for legacy components
 export default rateLimiter;

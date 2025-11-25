@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { 
-  BarChart3, Check, ChevronDown, ChevronUp, ExternalLink, 
-  Filter, Info, Search, SortAsc, SortDesc, Trash2, X 
+import {
+  BarChart3, Check, ChevronDown, ChevronUp, ExternalLink,
+  Filter, Info, Search, SortAsc, SortDesc, Trash2, X, Copy
 } from "lucide-react";
+import { toast } from "sonner";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +38,9 @@ import {
 import { useTaskStore } from "@/store/task";
 import { SearchTask } from "@/types";
 import SourceValidator from "@/components/Research/SourceValidator";
+import { EmptyState } from "@/components/ui/empty-state";
 import { assessDomainReputation, SourceType } from "@/utils/domain-reputation";
+import { FileSearch, SearchX, FolderSearch } from "lucide-react";
 import { extractDomainFromUrl } from "@/utils/url-extractor";
 
 interface SourcesPanelProps {
@@ -74,8 +78,6 @@ export default function SourcesPanel({
   };
   
   useEffect(() => {
-    // Add debug logging
-    console.log("SourcesPanel received sources:", sources);
     
     // Apply filtering and sorting
     let filtered = [...(sources || [])];
@@ -114,7 +116,6 @@ export default function SourcesPanel({
       }
     });
     
-    console.log("Filtered sources:", filtered);
     setFilteredSources(filtered);
   }, [sources, searchQuery, activeTab, sortBy, sortOrder]);
   
@@ -190,6 +191,16 @@ export default function SourcesPanel({
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg">Sources Panel</CardTitle>
           <div className="flex items-center gap-2">
+            {filteredSources.length > 0 && (
+              <CopyButton
+                text={filteredSources.map((s, idx) => `${idx + 1}. ${s.title || "Untitled"}\n   ${s.url}${s.credibilityScore ? `\n   Credibility: ${s.credibilityScore}/10` : ''}`).join('\n\n')}
+                label="Copy"
+                successMessage="Sources copied to clipboard"
+                variant="ghost"
+                size="sm"
+                iconOnly
+              />
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1 h-8">
@@ -363,9 +374,21 @@ export default function SourcesPanel({
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center">
-                            <Button 
-                              variant="ghost" 
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => {
+                                const text = `${source.title || "Untitled"}\n${source.url}${source.credibilityScore ? `\nCredibility: ${source.credibilityScore}/10` : ''}`;
+                                navigator.clipboard.writeText(text);
+                                toast.success("Source copied to clipboard");
+                              }}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
                               size="icon"
                               className="h-6 w-6"
                               onClick={() => handleRemove(source.id)}
@@ -381,13 +404,25 @@ export default function SourcesPanel({
               </Table>
             </div>
           ) : (
-            <div className="flex justify-center py-8 text-muted-foreground">
-              {searchQuery 
-                ? "No sources match your search criteria" 
-                : activeTab !== "all" 
-                  ? `No ${activeTab} sources found` 
-                  : "No sources added yet"}
-            </div>
+            <EmptyState
+              icon={searchQuery ? SearchX : activeTab !== "all" ? FolderSearch : FileSearch}
+              title={
+                searchQuery
+                  ? "No sources match your search"
+                  : activeTab !== "all"
+                    ? `No ${activeTab} sources found`
+                    : "No sources found yet"
+              }
+              description={
+                searchQuery
+                  ? "Try adjusting your search terms or clear the filter."
+                  : activeTab !== "all"
+                    ? `Switch to 'All' to see all sources, or add more ${activeTab} sources.`
+                    : "Start your research to discover and collect sources."
+              }
+              variant="default"
+              action={searchQuery ? { label: "Clear Search", onClick: () => setSearchQuery("") } : undefined}
+            />
           )}
         </CardContent>
       </Tabs>

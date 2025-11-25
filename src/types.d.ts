@@ -1,4 +1,4 @@
-interface Source {
+export interface Source {
   sourceType: "primary" | "secondary" | "official" | "analysis" | "commentary";
   id: string;
   url: string;
@@ -10,7 +10,7 @@ interface Source {
   publisherName?: string;
 }
 
-interface SearchTask {
+export interface SearchTask {
   state: "unprocessed" | "processing" | "completed";
   query: string;
   researchGoal: string;
@@ -18,7 +18,7 @@ interface SearchTask {
   sources: Source[];
 }
 
-interface ResearchHistory {
+export interface ResearchHistory {
   id: string;
   createdAt: number;
   updatedAt?: number;
@@ -34,11 +34,11 @@ interface ResearchHistory {
   articleType?: "news" | "feature" | "investigative" | "explainer";
 }
 
-interface PartialJson {
+export interface PartialJson {
   value: JSONValue | undefined;
   state:
-    | "undefined-input"
-    | "successful-parse"
-    | "repaired-parse"
-    | "failed-parse";
+  | "undefined-input"
+  | "successful-parse"
+  | "repaired-parse"
+  | "failed-parse";
 }

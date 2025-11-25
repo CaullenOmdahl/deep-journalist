@@ -14,45 +14,15 @@ export async function GET(req: NextRequest) {
     return new NextResponse(null, { status: 204, headers });
   }
 
-  // Mock response for the models endpoint
+  // Mock response for the models endpoint - Gemini 2.5+ only
   const mockResponse = {
     models: [
       {
-        name: "models/gemini-1.0-pro",
+        name: "models/gemini-2.5-flash",
         version: "001",
-        displayName: "Gemini 1.0 Pro",
-        description: "The best model for multi-turn text and code chat.",
-        inputTokenLimit: 30720,
-        outputTokenLimit: 2048,
-        supportedGenerationMethods: [
-          "generateContent",
-          "countTokens"
-        ],
-        temperature: 0.9,
-        topP: 0.95,
-        topK: 40
-      },
-      {
-        name: "models/gemini-1.0-pro-vision",
-        version: "001",
-        displayName: "Gemini 1.0 Pro Vision",
-        description: "The best model for multi-turn text, code, and vision chat.",
-        inputTokenLimit: 12288,
-        outputTokenLimit: 4096,
-        supportedGenerationMethods: [
-          "generateContent",
-          "countTokens"
-        ],
-        temperature: 0.4,
-        topP: 1,
-        topK: 32
-      },
-      {
-        name: "models/gemini-2.0-flash-thinking-exp",
-        version: "001",
-        displayName: "Gemini 2.0 Flash (Thinking)",
-        description: "A fast, powerful multimodal model optimized for production use cases.",
-        inputTokenLimit: 30720,
+        displayName: "Gemini 2.5 Flash",
+        description: "Fast, efficient model for everyday tasks with excellent performance.",
+        inputTokenLimit: 1048576,
         outputTokenLimit: 8192,
         supportedGenerationMethods: [
           "streamGenerateContent",
@@ -61,7 +31,39 @@ export async function GET(req: NextRequest) {
         ],
         temperature: 0.9,
         topP: 0.95,
-        topK: 32
+        topK: 40
+      },
+      {
+        name: "models/gemini-2.5-pro",
+        version: "001",
+        displayName: "Gemini 2.5 Pro",
+        description: "Most capable model for complex reasoning and analysis tasks.",
+        inputTokenLimit: 1048576,
+        outputTokenLimit: 8192,
+        supportedGenerationMethods: [
+          "streamGenerateContent",
+          "generateContent",
+          "countTokens"
+        ],
+        temperature: 0.9,
+        topP: 0.95,
+        topK: 40
+      },
+      {
+        name: "models/gemini-2.5-flash-preview-05-20",
+        version: "preview",
+        displayName: "Gemini 2.5 Flash (Preview)",
+        description: "Preview version of Gemini 2.5 Flash with latest improvements.",
+        inputTokenLimit: 1048576,
+        outputTokenLimit: 8192,
+        supportedGenerationMethods: [
+          "streamGenerateContent",
+          "generateContent",
+          "countTokens"
+        ],
+        temperature: 0.9,
+        topP: 0.95,
+        topK: 40
       }
     ]
   };

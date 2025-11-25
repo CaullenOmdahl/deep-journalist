@@ -37,6 +37,7 @@
     },
     "finalReport": {
       "title": "4. Final Report",
+      "emptyTitle": "Your Report",
       "emptyTip": "Waiting for data to be collated...",
       "researchedInfor": "Researched {{total}} websites"
     },

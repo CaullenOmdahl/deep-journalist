@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -15,13 +15,12 @@ import {
   Link2,
   Box,
   CalendarDays,
-  Search
+  Search,
+  Copy
 } from "lucide-react";
+import { toast } from "sonner";
 import { Crepe } from "@milkdown/crepe";
 import { replaceAll, getHTML } from "@milkdown/kit/utils";
-// Add these imports for Milkdown plugins
-import { commonmark } from "@milkdown/preset-commonmark";
-import { editorViewOptionsCtx } from "@milkdown/core";
 import { Button } from "@/components/Button";
 import {
   Form,
@@ -107,6 +106,7 @@ function SearchResult() {
     stop: accurateTimerStop,
   } = useAccurateTimer();
   const [milkdownEditor, setMilkdownEditor] = useState<Crepe>();
+  const hiddenEditorRef = useRef<HTMLDivElement>(null);
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const [isWriting, setIsWriting] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"search" | "sources" | "timeline">("search");
@@ -217,7 +217,6 @@ function SearchResult() {
 
   // Get all sources from all tasks
   const allSources = taskStore.tasks.reduce((acc, task) => {
-    console.log("Task with sources:", task.query, "has sources:", task.sources ? task.sources.length : 0);
     
     if (task.sources && task.sources.length > 0) {
       // Enhance sources with missing properties from domain reputation
@@ -241,53 +240,51 @@ function SearchResult() {
     return acc;
   }, [] as Source[]);
   
-  // Add debug logging for sources panel
-  console.log("All sources for sources panel:", allSources);
-  console.log("Total sources count:", allSources.length);
 
   useLayoutEffect(() => {
-    if (!document) return;
-    
-    const crepe = new Crepe({
-      defaultValue: "",
-      root: document.createDocumentFragment(),
-      features: {
-        [Crepe.Feature.ImageBlock]: false,
-        [Crepe.Feature.BlockEdit]: false,
-        [Crepe.Feature.Toolbar]: false,
-        [Crepe.Feature.LinkTooltip]: false,
-      },
-    });
+    if (typeof document === 'undefined' || !hiddenEditorRef.current) return;
 
-    // Create the editor without any plugins first, then use commonmark
-    crepe.editor
-      .use(commonmark)
-      .config((ctx) => {
-        ctx.update(editorViewOptionsCtx, (prev) => ({
-          ...prev,
-          editable: () => false,
-        }));
-      })
-      .create()
-      .then(() => {
+    let crepe: Crepe | null = null;
+
+    const initEditor = async () => {
+      try {
+        crepe = new Crepe({
+          defaultValue: "",
+          root: hiddenEditorRef.current!, // Use the attached DOM ref
+          features: {
+            [Crepe.Feature.ImageBlock]: false,
+            [Crepe.Feature.BlockEdit]: false,
+            [Crepe.Feature.Toolbar]: false,
+            [Crepe.Feature.LinkTooltip]: false,
+          },
+        });
+
+        // Crepe handles all plugin setup internally - just create it
+        await crepe.create();
         setMilkdownEditor(crepe);
-        console.log("SearchResult Milkdown editor created successfully");
-      })
-      .catch(error => {
+      } catch (error) {
         console.error("Error creating Milkdown editor in SearchResult:", error);
-      });
+      }
+    };
+
+    initEditor();
 
     return () => {
-      try {
-        crepe.destroy();
-      } catch (error) {
-        console.error("Error destroying Milkdown editor:", error);
+      if (crepe) {
+        try {
+          crepe.destroy();
+        } catch (error) {
+          console.error("Error destroying Milkdown editor:", error);
+        }
       }
     };
   }, []);
 
   return (
     <section className="p-4 border rounded-md mt-4 print:hidden">
+      {/* Hidden div for Milkdown editor used to convert markdown to HTML */}
+      <div ref={hiddenEditorRef} className="hidden" aria-hidden="true" />
+
       <div className="flex justify-between items-center border-b mb-4">
         <h3 className="font-semibold text-lg leading-10">
           {t("research.searchResult.title")}
@@ -370,6 +367,18 @@ function SearchResult() {
                                             {source.sourceType}
                                           </Badge>
                                         )}
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 ml-auto"
+                                          onClick={() => {
+                                            const text = `${source.title || source.url}\n${source.url}`;
+                                            navigator.clipboard.writeText(text);
+                                            toast.success("Source copied to clipboard");
+                                          }}
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
                                       </div>
                                       <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-x-3">
                                         {source.publicationDate && (
@@ -505,14 +514,14 @@ function SearchResult() {
             
             <TabsContent value="timeline">
               <div className="space-y-4">
-                <TimelineVisualizer 
-                  sources={allSources}
+                <TimelineVisualizer
+                  sources={taskStore.tasks}
                   mainContent={taskStore.finalReport}
                 />
-                
-                {allSources.length === 0 && (
+
+                {taskStore.tasks.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
-                    No sources found. Start your research to generate a timeline.
+                    No research tasks found. Start your research to generate a timeline.
                   </div>
                 )}
                 

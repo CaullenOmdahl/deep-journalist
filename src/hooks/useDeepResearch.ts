@@ -9,7 +9,7 @@ import { useTaskStore } from "@/store/task";
 import { useHistoryStore } from "@/store/history";
 import { useSettingStore } from "@/store/setting";
 import { useGlobalStore } from "@/store/global";
-import logger from "@/utils/logger"; // Import the new logger
+import logger from "@/utils/logger";
 import {
   getSystemPrompt,
   getOutputGuidelinesPrompt,
@@ -22,11 +22,10 @@ import {
   writeFinalReportPrompt,
   writeJournalisticArticlePrompt,
   getSERPQuerySchema,
-  getSourceSchema,
 } from "@/utils/deep-research";
 import { parseError } from "@/utils/error";
 import { pick, flat } from "radash";
-import rateLimiter from "@/utils/rate-limiter";
+import rateLimiter, { FALLBACK_MODELS } from "@/utils/rate-limiter";
 
 function getResponseLanguagePrompt(lang: string) {
   return `**Respond in ${lang}**`;
@@ -55,34 +54,85 @@ function handleError(error: unknown) {
 // Check if error is a rate limit error
 function isRateLimitError(error: unknown): boolean {
   if (!error) return false;
-  
+
   if (typeof error === 'object') {
     const err = error as any;
-    
+
     // Check for common rate limit indicators
     if (err.code === 429 || err.status === 429) return true;
     if (err.code === 503 || err.status === 503) return true;
-    
+    if (err.statusCode === 429 || err.statusCode === 503) return true;
+
     if (err.error && typeof err.error === 'object') {
       if (err.error.code === 429 || err.error.status === 429) return true;
       if (err.error.code === 503 || err.error.status === 503) return true;
     }
-    
+
     // Check message content
     const message = err.message || err.error?.message || '';
     if (typeof message === 'string') {
       if (
-        message.includes('rate limit') || 
+        message.includes('rate limit') ||
         message.includes('too many requests') ||
         message.includes('overloaded') ||
-        message.includes('quota exceeded')
+        message.includes('quota exceeded') ||
+        message.includes('RESOURCE_EXHAUSTED')
       ) {
         return true;
       }
     }
+
+    // Check for nested lastError (from AI SDK retry errors)
+    if (err.lastError) {
+      return isRateLimitError(err.lastError);
+    }
   }
-  
+
   return false;
+}
+
+// Get the best available model (respecting cooldowns, exhaustion, and known unavailable models)
+function getAvailableModel(preferredModel: string): string {
+  // Check if preferred model has been confirmed unavailable (via actual API errors)
+  if (rateLimiter.isModelDeprecated(preferredModel)) {
+    // Only log silently - no toast here since the error toast was already shown when the model was marked unavailable
+    logger.info(`Model ${preferredModel} was previously marked unavailable, finding fallback`);
+    const fallback = rateLimiter.getFallbackModel(preferredModel);
+    if (fallback) {
+      logger.info(`Using fallback model ${fallback} instead of ${preferredModel}`);
+      return fallback;
+    }
+  }
+
+  // Check if preferred model is in cooldown or exhausted
+  if (rateLimiter.isInCooldown(preferredModel) || rateLimiter.isModelExhausted(preferredModel)) {
+    const fallback = rateLimiter.getFallbackModel(preferredModel);
+    if (fallback) {
+      logger.info(`Using fallback model ${fallback} instead of ${preferredModel} (cooldown/exhausted)`);
+      return fallback;
+    }
+  }
+
+  // If no issues, use the preferred model
+  if (!rateLimiter.isInCooldown(preferredModel) && !rateLimiter.isModelExhausted(preferredModel) && !rateLimiter.isModelDeprecated(preferredModel)) {
+    return preferredModel;
+  }
+
+  // If no fallback available, return the first available fallback model
+  logger.warn(`No fallback available for ${preferredModel}, using first available fallback`);
+  for (const model of FALLBACK_MODELS) {
+    if (!rateLimiter.isInCooldown(model) && !rateLimiter.isModelExhausted(model)) {
+      return model;
+    }
+  }
+
+  // Last resort - return the preferred model anyway
+  return preferredModel;
+}
+
+// Sleep helper for retry delays
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function useDeepResearch() {
@@ -120,36 +170,37 @@ function useDeepResearch() {
 
   async function askQuestions() {
     logger.info("askQuestions() function called");
-    
+
     // Check if API key is configured
     if (!checkApiConfiguration()) {
       return;
     }
-    
+
     const { thinkingModel, language } = useSettingStore.getState();
-    logger.info("Settings retrieved - thinkingModel:", thinkingModel, "language:", language);
-    
+    const modelToUse = getAvailableModel(thinkingModel);
+    logger.info("Settings retrieved - thinkingModel:", thinkingModel, "modelToUse:", modelToUse, "language:", language);
+
     const { question } = useTaskStore.getState();
     logger.info("Question from taskStore:", question);
-    
-    // Check if model is in cooldown
-    if (checkModelCooldown(thinkingModel)) {
+
+    // Check if model is in cooldown (after fallback selection)
+    if (checkModelCooldown(modelToUse)) {
       logger.error("Model is in cooldown period, aborting askQuestions");
       return;
     }
-    
+
     setStatus(t("research.common.thinking"));
     const provider = createProvider("google");
-    logger.info("AI provider created for model:", thinkingModel);
+    logger.info("AI provider created for model:", modelToUse);
     
     try {
-      logger.info("Tracking request to model:", thinkingModel);
+      logger.info("Tracking request to model:", modelToUse);
       // Track the request
-      rateLimiter.trackRequest(thinkingModel);
-      
+      rateLimiter.trackRequest(modelToUse);
+
       logger.info("Preparing to stream text with prompt based on question:", question);
       const result = streamText({
-        model: provider(thinkingModel),
+        model: provider(modelToUse),
         system: getSystemPrompt(),
         prompt: [
           generateQuestionsPrompt(question),
@@ -160,28 +211,28 @@ function useDeepResearch() {
           logger.error("Error in streamText during askQuestions:", error);
           if (isRateLimitError(error)) {
             logger.info("Rate limit error detected, handling rate limit");
-            rateLimiter.handleRateLimitError(thinkingModel, error);
+            rateLimiter.handleRateLimitError(modelToUse, error);
           } else {
             handleError(error);
           }
         },
       });
-      
+
       let content = "";
       logger.info("Setting question in taskStore");
       taskStore.setQuestion(question);
-      
+
       logger.info("Starting to process text stream");
       for await (const textPart of result.textStream) {
         content += textPart;
         taskStore.updateQuestions(content);
       }
       logger.info("Finished processing text stream, final content length:", content.length);
-      
+
     } catch (error) {
       logger.error("Error in askQuestions:", error);
       if (isRateLimitError(error)) {
-        rateLimiter.handleRateLimitError(thinkingModel, error);
+        rateLimiter.handleRateLimitError(modelToUse, error);
       } else {
         handleError(error);
       }
@@ -189,155 +240,164 @@ function useDeepResearch() {
   }
 
   async function runSearchTask(queries: SearchTask[]) {
-    const { language } = useSettingStore.getState();
+    const { language, networkingModel } = useSettingStore.getState();
     setStatus(t("research.common.research"));
-    const plimit = Plimit(1);
-    const searchModel = "gemini-2.0-flash-exp";
-    
-    logger.info("Starting search tasks for queries:", queries.map(q => q.query));
-    
-    for await (const item of queries) {
-      await plimit(async () => {
-        // Check if model is in cooldown
-        if (checkModelCooldown(searchModel)) {
-          taskStore.updateTask(item.query, { state: "unprocessed", learning: "Rate limit exceeded. Try again later." });
-          return "";
+
+    // Parallel execution with staggered starts to avoid rate limit bursts
+    // Concurrency of 3 balances speed vs rate limits for most API tiers
+    const CONCURRENCY = 3;
+    const STAGGER_DELAY_MS = 500; // Delay between starting each request
+
+    const plimit = Plimit(CONCURRENCY);
+    // Use the configured networking model with fallback support
+    const searchModel = getAvailableModel(networkingModel || "gemini-2.5-flash");
+
+    logger.info(`Starting ${queries.length} search tasks with concurrency ${CONCURRENCY}, using model: ${searchModel}`);
+
+    // Create all tasks with staggered starts
+    const taskPromises = queries.map((item, index) => {
+      return plimit(async () => {
+        // Stagger the start of each request to avoid burst rate limiting
+        if (index > 0) {
+          await sleep(index * STAGGER_DELAY_MS);
         }
-        
-        let content = "";
-        const sources: Source[] = [];
-        taskStore.updateTask(item.query, { state: "processing" });
-        const provider = createProvider("google");
-        
-        try {
-          // Track the request
-          rateLimiter.trackRequest(searchModel);
-          
-          logger.info(`Processing search task: ${item.query}`);
-          
-          const searchResult = streamText({
-            model: provider(searchModel, { useSearchGrounding: true }),
-            system: getSystemPrompt(),
-            prompt: [
-              processJournalisticSearchResultPrompt(item.query, item.researchGoal),
-              getResponseLanguagePrompt(language),
-            ].join("\n\n"),
-            experimental_transform: smoothStream(),
-            onError: (error: unknown) => {
-              if (isRateLimitError(error)) {
-                rateLimiter.handleRateLimitError(searchModel, error);
-                taskStore.updateTask(item.query, { state: "unprocessed", learning: "Rate limit exceeded. Will retry automatically." });
-              } else {
-                handleError(error);
-                taskStore.updateTask(item.query, { state: "unprocessed" });
-              }
-            },
-          });
-          
-          const sourceSchema = getSourceSchema();
-          let sourcesData = [];
-          
-          for await (const part of searchResult.fullStream) {
-            if (part.type === "text-delta") {
-              content += part.textDelta;
-              taskStore.updateTask(item.query, { learning: content });
-            } else if (part.type === "reasoning") {
-              logger.info("reasoning", part.textDelta);
-            } else if (part.type === "source") {
-              // Process source with enhanced metadata
-              logger.info("Received source:", part.source);
-              
-              if (!part.source.url) {
-                logger.warn("Received source without URL, skipping:", part.source);
-                continue;
-              }
-              
-              const enhancedSource: Source = {
-                ...part.source,
-                sourceType: part.source.sourceType || "secondary", // Default type
-                id: `source-${Date.now()}-${sources.length + 1}`
-              };
-              logger.info("Enhanced source created:", enhancedSource);
-              sources.push(enhancedSource);
-              logger.info("Sources array now has", sources.length, "sources");
-              
-              // Parse JSON data from content to extract source metadata if available
-              try {
-                const sourceData = parsePartialJson(removeJsonMarkdown(content));
-                logger.info("Parsed source data:", sourceData);
-                if (sourceData.state === "successful-parse" && sourceData.value) {
-                  sourcesData = sourceData.value;
-                  // Match source metadata with URL
-                  const matchingSourceData = sourcesData.find((s: any) => s.url === enhancedSource.url);
-                  logger.info("Matching source data found:", matchingSourceData);
-                  if (matchingSourceData) {
-                    enhancedSource.sourceType = matchingSourceData.sourceType || "secondary";
-                    enhancedSource.credibilityScore = matchingSourceData.credibilityScore;
-                    enhancedSource.biasAssessment = matchingSourceData.biasAssessment;
-                    enhancedSource.publicationDate = matchingSourceData.publicationDate;
-                    enhancedSource.authorName = matchingSourceData.authorName;
-                    enhancedSource.publisherName = matchingSourceData.publisherName;
-                    logger.info("Updated enhanced source with metadata:", enhancedSource);
-                  }
-                }
-              } catch (e) {
-                logger.error("Error parsing source metadata:", e);
-              }
-            }
-          }
-          
-          logger.info(`Task complete: ${item.query}. Found ${sources.length} sources.`);
-          
-          // Make sure all sources have titles
-          const processedSources = sources.map(source => {
-            if (!source.title) {
-              source.title = source.url;
-            }
-            return source;
-          });
-          
-          logger.info("Processed sources ready for update:", processedSources);
-          taskStore.updateTask(item.query, { state: "completed", sources: processedSources });
-          logger.info("Task updated with sources:", item.query);
-        } catch (error) {
+
+        return processSearchQuery(item, searchModel, language);
+      });
+    });
+
+    // Wait for all tasks to complete
+    await Promise.allSettled(taskPromises);
+    logger.info("All search tasks completed");
+  }
+
+  // Extracted search query processing for cleaner parallel execution
+  async function processSearchQuery(item: SearchTask, searchModel: string, language: string): Promise<string> {
+    const provider = createProvider("google");
+
+    // Check if model is in cooldown
+    if (checkModelCooldown(searchModel)) {
+      taskStore.updateTask(item.query, { state: "unprocessed", learning: "Rate limit exceeded. Try again later." });
+      return "";
+    }
+
+    let content = "";
+    const sources: Source[] = [];
+    taskStore.updateTask(item.query, { state: "processing" });
+
+    try {
+      // Track the request
+      rateLimiter.trackRequest(searchModel);
+
+      logger.info(`Processing search task: ${item.query}`);
+
+      const searchResult = streamText({
+        model: provider(searchModel, { useSearchGrounding: true }),
+        system: getSystemPrompt(),
+        prompt: [
+          processJournalisticSearchResultPrompt(item.query, item.researchGoal),
+          getResponseLanguagePrompt(language),
+        ].join("\n\n"),
+        experimental_transform: smoothStream(),
+        onError: (error: unknown) => {
           if (isRateLimitError(error)) {
             rateLimiter.handleRateLimitError(searchModel, error);
-            taskStore.updateTask(item.query, { 
-              state: "unprocessed", 
-              learning: content || "Rate limit exceeded. Will retry automatically." 
-            });
+            taskStore.updateTask(item.query, { state: "unprocessed", learning: "Rate limit exceeded. Will retry automatically." });
           } else {
             handleError(error);
             taskStore.updateTask(item.query, { state: "unprocessed" });
           }
-        }
-        
-        return content;
+        },
       });
+
+      for await (const part of searchResult.fullStream) {
+        if (part.type === "text-delta") {
+          // AI SDK v5: textDelta renamed to delta
+          content += (part as any).delta ?? (part as any).textDelta;
+          taskStore.updateTask(item.query, { learning: content });
+        } else if (part.type === "reasoning") {
+          // AI SDK v5: textDelta renamed to delta
+          logger.info("reasoning", (part as any).delta ?? (part as any).textDelta);
+        }
+      }
+
+      // After stream completes, extract sources from grounding metadata
+      // Gemini 2.5+ with search grounding returns sources in providerMetadata, not as stream events
+      try {
+        const response = await searchResult.response;
+        const providerMetadata = (response as any).providerMetadata || (response as any).experimental_providerMetadata;
+        const groundingMetadata = providerMetadata?.google?.groundingMetadata;
+
+        if (groundingMetadata?.groundingChunks) {
+          logger.info(`Found ${groundingMetadata.groundingChunks.length} grounding chunks`);
+
+          for (const chunk of groundingMetadata.groundingChunks) {
+            if (chunk.web && chunk.web.uri) {
+              const source: Source = {
+                url: chunk.web.uri,
+                title: chunk.web.title || new URL(chunk.web.uri).hostname,
+                sourceType: "secondary",
+                id: `source-${Date.now()}-${sources.length + 1}`
+              };
+              sources.push(source);
+            }
+          }
+
+          logger.info(`Extracted ${sources.length} sources from grounding metadata`);
+        } else {
+          logger.info("No grounding metadata found in response");
+        }
+      } catch (metadataError) {
+        logger.error("Error extracting grounding metadata:", metadataError);
+      }
+
+      logger.info(`Task complete: ${item.query}. Found ${sources.length} sources.`);
+
+      // Make sure all sources have titles
+      const processedSources = sources.map(source => {
+        if (!source.title) {
+          source.title = source.url;
+        }
+        return source;
+      });
+
+      taskStore.updateTask(item.query, { state: "completed", sources: processedSources });
+    } catch (error) {
+      if (isRateLimitError(error)) {
+        rateLimiter.handleRateLimitError(searchModel, error);
+        taskStore.updateTask(item.query, {
+          state: "unprocessed",
+          learning: content || "Rate limit exceeded. Will retry automatically."
+        });
+      } else {
+        handleError(error);
+        taskStore.updateTask(item.query, { state: "unprocessed" });
+      }
     }
-    
-    logger.info("All search tasks completed");
+
+    return content;
   }
 
   async function reviewSearchResult() {
     const { thinkingModel, language } = useSettingStore.getState();
     const { query, tasks, suggestion } = useTaskStore.getState();
-    
+    const modelToUse = getAvailableModel(thinkingModel);
+
     // Check if model is in cooldown
-    if (checkModelCooldown(thinkingModel)) {
+    if (checkModelCooldown(modelToUse)) {
       return;
     }
-    
+
     setStatus(t("research.common.research"));
     const learnings = tasks.map((item) => item.learning);
     const provider = createProvider("google");
-    
+
     try {
       // Track the request
-      rateLimiter.trackRequest(thinkingModel);
-      
+      rateLimiter.trackRequest(modelToUse);
+
       const result = streamText({
-        model: provider(thinkingModel),
+        model: provider(modelToUse),
         system: getSystemPrompt(),
         prompt: [
           reviewSerpQueriesPrompt(query, learnings, suggestion),
@@ -346,7 +406,7 @@ function useDeepResearch() {
         experimental_transform: smoothStream(),
         onError: (error) => {
           if (isRateLimitError(error)) {
-            rateLimiter.handleRateLimitError(thinkingModel, error);
+            rateLimiter.handleRateLimitError(modelToUse, error);
           } else {
             handleError(error);
           }
@@ -380,7 +440,7 @@ function useDeepResearch() {
       }
     } catch (error) {
       if (isRateLimitError(error)) {
-        rateLimiter.handleRateLimitError(thinkingModel, error);
+        rateLimiter.handleRateLimitError(modelToUse, error);
       } else {
         handleError(error);
       }
@@ -392,12 +452,15 @@ function useDeepResearch() {
     const { query, tasks, setId, setTitle, setSources, articleType = "news", finalReport } =
       useTaskStore.getState();
     const { save } = useHistoryStore.getState();
-    
+
+    // Get available model with fallback support
+    let modelToUse = getAvailableModel(thinkingModel);
+
     // Check if model is in cooldown
-    if (checkModelCooldown(thinkingModel)) {
+    if (checkModelCooldown(modelToUse)) {
       return;
     }
-    
+
     let retryCount = 0;
     const maxRetries = 3;
     let content = "";
@@ -436,7 +499,7 @@ function useDeepResearch() {
         );
         
         logger.info("Report generation parameters:", {
-          model: thinkingModel,
+          model: modelToUse,
           articleType,
           tasksCount: tasks.length,
           learningsLength: learnings.join("").length,
@@ -445,7 +508,7 @@ function useDeepResearch() {
         });
 
         // Track the request
-        rateLimiter.trackRequest(thinkingModel);
+        rateLimiter.trackRequest(modelToUse);
 
         // Create a prompt that incorporates any existing template
         let prompt;
@@ -467,15 +530,22 @@ function useDeepResearch() {
         logger.info("Sending report generation prompt to model");
         
         const result = streamText({
-          model: provider(thinkingModel),
+          model: provider(modelToUse),
           system: [getSystemPrompt(), getOutputGuidelinesPrompt()].join("\n\n"),
           prompt: prompt,
           experimental_transform: smoothStream(),
           onError: (error) => {
             logger.error("Stream error in report generation:", error);
             if (isRateLimitError(error)) {
-              rateLimiter.handleRateLimitError(thinkingModel, error);
-              toast.error(`Rate limit exceeded. Please try again later.`);
+              const { retryAfterMs, isQuotaExhausted } = rateLimiter.handleRateLimitError(modelToUse, error);
+              if (isQuotaExhausted) {
+                // Try switching to a fallback model for next retry
+                const fallback = rateLimiter.getFallbackModel(modelToUse);
+                if (fallback) {
+                  modelToUse = fallback;
+                  toast.info(`Switching to ${fallback} for retry...`);
+                }
+              }
             } else {
               const errorMessage = parseError(error);
               toast.error(`Error generating report: ${errorMessage}`);
@@ -510,34 +580,43 @@ function useDeepResearch() {
         break;
       } catch (error) {
         logger.error(`Report generation attempt ${retryCount + 1} failed:`, error);
-        
+
         if (isRateLimitError(error)) {
-          rateLimiter.handleRateLimitError(thinkingModel, error);
-          // For rate limit errors, we should wait for the cooldown period
-          const cooldownTime = rateLimiter.getCooldownTimeRemaining(thinkingModel);
-          
-          toast.warning(`Rate limit hit. Waiting ${cooldownTime} seconds before retry...`);
-          // Wait for the cooldown period before retrying
-          await new Promise(resolve => setTimeout(resolve, cooldownTime * 1000));
+          const { retryAfterMs, isQuotaExhausted } = rateLimiter.handleRateLimitError(modelToUse, error);
+
+          // If quota is exhausted, try switching to a fallback model
+          if (isQuotaExhausted) {
+            const fallback = rateLimiter.getFallbackModel(modelToUse);
+            if (fallback) {
+              logger.info(`Switching from ${modelToUse} to ${fallback} due to quota exhaustion`);
+              modelToUse = fallback;
+              toast.info(`Switching to ${fallback} and retrying...`);
+            }
+          }
+
+          // Wait for the API-specified retry delay
+          const waitTimeMs = Math.max(retryAfterMs, 5000); // At least 5 seconds
+          toast.warning(`Rate limit hit. Waiting ${Math.ceil(waitTimeMs / 1000)}s before retry...`);
+          await sleep(waitTimeMs);
         }
-        
+
         retryCount++;
-        
+
         if (retryCount === maxRetries) {
           const errorMessage = parseError(error);
           toast.error(`Failed to generate report after ${maxRetries} attempts: ${errorMessage}`);
-          
+
           // Add a fallback report to avoid complete failure
           const fallbackContent = `# ${query}\n\nUnable to generate a full report after multiple attempts.\n\nPlease try again later or check your API settings.`;
           content = fallbackContent;
           taskStore.updateFinalReport(fallbackContent);
+        } else {
+          toast.warning(`Retrying report generation (attempt ${retryCount + 1}/${maxRetries})...`);
         }
-        
-        toast.warning(`Retrying report generation (attempt ${retryCount + 1}/${maxRetries})...`);
-        
+
         // Only apply exponential backoff for non-rate limit errors
         if (!isRateLimitError(error)) {
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+          await sleep(Math.pow(2, retryCount) * 1000);
         }
       }
     }
@@ -587,25 +666,26 @@ function useDeepResearch() {
   async function deepResearch() {
     const { thinkingModel, language } = useSettingStore.getState();
     const { query } = useTaskStore.getState();
-    
+    const modelToUse = getAvailableModel(thinkingModel);
+
     // Check if model is in cooldown
-    if (checkModelCooldown(thinkingModel)) {
+    if (checkModelCooldown(modelToUse)) {
       return;
     }
-    
+
     setStatus(t("research.common.thinking"));
     try {
       let queries = [];
       const provider = createProvider("google");
-      
+
       // Extract input type from query
       const inputType = query.includes("Research about: http") ? "url" : "summary";
-      
+
       // Track the request
-      rateLimiter.trackRequest(thinkingModel);
-      
+      rateLimiter.trackRequest(modelToUse);
+
       const result = streamText({
-        model: provider(thinkingModel),
+        model: provider(modelToUse),
         system: getSystemPrompt(),
         prompt: [
           generateJournalisticQueriesPrompt(query, inputType),
@@ -614,7 +694,7 @@ function useDeepResearch() {
         experimental_transform: smoothStream(),
         onError: (error) => {
           if (isRateLimitError(error)) {
-            rateLimiter.handleRateLimitError(thinkingModel, error);
+            rateLimiter.handleRateLimitError(modelToUse, error);
           } else {
             handleError(error);
           }
@@ -647,7 +727,7 @@ function useDeepResearch() {
       await runSearchTask(queries);
     } catch (error) {
       if (isRateLimitError(error)) {
-        rateLimiter.handleRateLimitError(thinkingModel, error);
+        rateLimiter.handleRateLimitError(modelToUse, error);
       } else {
         logger.error(error);
       }

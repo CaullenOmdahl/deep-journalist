@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useGlobalStore } from "@/store/global";
 import { Button } from "@/components/Button";
 import { useState } from "react";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { 
   Search, 
   FileText, 
@@ -43,6 +44,11 @@ function Home() {
     globalStore.setHasUsedBefore(true);
     setShowLandingPage(false);
   };
+
+  // Enable keyboard shortcuts (only when not on landing page)
+  useKeyboardShortcuts({
+    enabled: !showLandingPage,
+  });
 
   if (!showLandingPage) {
     return (

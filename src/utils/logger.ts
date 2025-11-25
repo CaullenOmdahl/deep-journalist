@@ -1,16 +1,17 @@
 /**
  * Deep Journalist Logger
- * 
+ *
  * Universal logger that works in all environments:
  * - Browser client-side
  * - Node.js server-side
  * - Edge Runtime API routes
+ *
+ * Note: File logging is disabled to ensure Edge Runtime compatibility.
+ * Logs are output to console only.
  */
 
 // Determine runtime environment
 const isServer = typeof window === 'undefined';
-const isEdgeRuntime = isServer && typeof process !== 'undefined' && !('version' in process);
-const isNodeRuntime = isServer && !isEdgeRuntime;
 
 // Log levels with their corresponding priorities
 enum LogLevel {
@@ -58,9 +59,9 @@ function configure(newConfig: Partial<LoggerConfig>) {
 /**
  * Format a message with timestamp if configured
  */
-function formatMessage(level: string, ...args: any[]): string {
-  const timestamp = config.includeTimestamps 
-    ? `[${new Date().toISOString()}] ` 
+function formatMessage(level: string, ...args: unknown[]): string {
+  const timestamp = config.includeTimestamps
+    ? `[${new Date().toISOString()}] `
     : '';
 
   // Format objects for better readability
@@ -74,7 +75,7 @@ function formatMessage(level: string, ...args: any[]): string {
     }
     return String(arg);
   }).join(' ');
-  
+
   return `${timestamp}[${level.toUpperCase()}] ${formatted}`;
 }
 
@@ -82,62 +83,60 @@ function formatMessage(level: string, ...args: any[]): string {
  * Create a logger function for the specified level
  */
 function createLogger(level: LogLevel, levelName: string) {
-  return (...args: any[]) => {
+  return (...args: unknown[]) => {
     // Skip logging if below configured level
     if (level < config.level) return;
 
     // Format the message
     const formattedMsg = formatMessage(levelName, ...args);
-    
+
+    // Get the console method to use
+    const consoleMethod = levelName === 'debug' ? 'log' : levelName as 'log' | 'info' | 'warn' | 'error';
+
     if (isServer) {
       // Server-side logging (both Node.js and Edge Runtime)
       if (config.useColors) {
         const color = COLORS[levelName as keyof typeof COLORS] || '';
-        const timestampPart = config.includeTimestamps 
-          ? `${COLORS.timestamp}[${new Date().toISOString()}]${COLORS.reset} ` 
+        const timestampPart = config.includeTimestamps
+          ? `${COLORS.timestamp}[${new Date().toISOString()}]${COLORS.reset} `
           : '';
         const levelPart = `${color}[${levelName.toUpperCase()}]${COLORS.reset} `;
-        
+
         let content = '';
         if (args.length === 1 && typeof args[0] === 'string') {
           content = args[0];
         } else {
           try {
-            content = args.map(arg => 
+            content = args.map(arg =>
               typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
             ).join(' ');
           } catch (e) {
-            content = args.join(' ');
+            content = args.map(String).join(' ');
           }
         }
-        
-        console[levelName as 'log' | 'info' | 'warn' | 'error'](
-          `${timestampPart}${levelPart}${content}`
-        );
+
+        console[consoleMethod](`${timestampPart}${levelPart}${content}`);
       } else {
-        console[levelName as 'log' | 'info' | 'warn' | 'error'](formattedMsg);
-      }
-      
-      // Only write to log files for Node.js runtime, not Edge runtime
-      if (isNodeRuntime) {
-        writeToLogFile(formattedMsg);
+        console[consoleMethod](formattedMsg);
       }
     } else {
       // Client-side logging
-      console[levelName as 'log' | 'info' | 'warn' | 'error'](`[CLIENT]${formattedMsg}`);
-      
+      console[consoleMethod](`[CLIENT]${formattedMsg}`);
+
       // Send to server logger API if in browser
       if (typeof fetch !== 'undefined') {
         try {
           fetch('/api/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              level: levelName, 
+            body: JSON.stringify({
+              level: levelName,
               message: args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' '),
               context: {
                 url: typeof window !== 'undefined' ? window.location.href : 'unknown',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                source: 'client',
+                userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'
               }
             }),
           }).catch(() => {
@@ -151,63 +150,11 @@ function createLogger(level: LogLevel, levelName: string) {
   };
 }
 
-/**
- * Safely write to a log file - only called in Node.js environment
- * 
- * IMPORTANT: This function must NOT be called or referenced in Edge Runtime!
- */
-function writeToLogFile(message: string): void {
-  // Skip file logging in Edge Runtime or browser
-  if (typeof process === 'undefined' || typeof window !== 'undefined' || isEdgeRuntime) {
-    return; // Skip file logging in browser or Edge Runtime
-  }
-  
-  try {
-    // Dynamic imports to prevent Edge Runtime errors
-    // Only import these in a Node.js environment
-    if (isNodeRuntime) {
-      const fs = require('fs');
-      const path = require('path');
-      
-      const logDir = path.join(process.cwd(), 'logs');
-      
-      if (!fs.existsSync(logDir)) {
-        try {
-          fs.mkdirSync(logDir, { recursive: true });
-        } catch (err) {
-          console.error('Failed to create logs directory:', err);
-          return;
-        }
-      }
-      
-      const date = new Date();
-      const dateStr = date.toISOString().split('T')[0];
-      const logFile = path.join(logDir, `server-${dateStr}.log`);
-      
-      fs.appendFileSync(logFile, message + '\n');
-    }
-  } catch (e) {
-    // Silently handle errors in Edge Runtime
-    console.error('Error writing to log file (likely in Edge Runtime):', e);
-  }
-}
-
 // Create the logger functions
 const debug = createLogger(LogLevel.DEBUG, 'debug');
 const info = createLogger(LogLevel.INFO, 'info');
 const warn = createLogger(LogLevel.WARN, 'warn');
 const error = createLogger(LogLevel.ERROR, 'error');
-
-// Log initialization in appropriate environment
-if (isServer) {
-  if (isEdgeRuntime) {
-    info('Edge Runtime logger initialized');
-  } else {
-    info('Node.js server-side logger initialized');
-  }
-} else {
-  info('Client-side logger initialized');
-}
 
 // Export the logger instance
 const logger = {

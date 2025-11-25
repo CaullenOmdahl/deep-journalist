@@ -18,10 +18,14 @@ export const defaultValues = {
   apiKey: "",
   apiProxy: "https://generativelanguage.googleapis.com",
   accessPassword: "",
-  thinkingModel: "gemini-2.0-flash-thinking-exp",
-  networkingModel: "gemini-2.0-flash-exp",
+  thinkingModel: "gemini-2.5-flash",
+  networkingModel: "gemini-2.5-flash",
   language: "",
 };
+
+// Note: We no longer proactively migrate models. The rate limiter will
+// detect unavailable models via actual API errors and suggest fallbacks.
+// This preserves user choice and doesn't assume models are deprecated.
 
 export const useSettingStore = create(
   persist<SettingStore & SettingFunction>(
@@ -29,6 +33,9 @@ export const useSettingStore = create(
       ...defaultValues,
       update: (values) => set(values),
     }),
-    { name: "setting" }
+    {
+      name: "setting",
+      version: 1,
+    }
   )
 );

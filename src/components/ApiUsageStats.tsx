@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSettingStore } from "@/store/setting";
 import rateLimiter from "@/utils/rate-limiter";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, AlertTriangle } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -12,34 +12,6 @@ import {
 import {
   Progress
 } from "@/components/ui/progress";
-
-// Helper to get MODEL_RATE_LIMITS from the rateLimiter
-const getModelLimits = (model: string) => {
-  // This is a workaround since we can't access the private MODEL_RATE_LIMITS directly
-  // A better approach would be to add a getter in the rateLimiter class
-  const defaultLimits = { rpm: 2, tpm: 32000, rpd: 50 };
-  
-  switch (model) {
-    case 'gemini-2.5-pro-exp':
-      return { rpm: 2, tpm: 1000000, rpd: 50 };
-    case 'gemini-2.0-flash':
-      return { rpm: 15, tpm: 1000000, rpd: 1500 };
-    case 'gemini-2.0-flash-exp':
-      return { rpm: 10, tpm: 1000000, rpd: 1500 };
-    case 'gemini-2.0-flash-lite':
-      return { rpm: 30, tpm: 1000000, rpd: 1500 };
-    case 'gemini-2.0-flash-thinking-exp':
-      return { rpm: 10, tpm: 4000000, rpd: 1500 };
-    case 'gemini-1.5-flash':
-      return { rpm: 15, tpm: 1000000, rpd: 1500 };
-    case 'gemini-1.5-flash-8b':
-      return { rpm: 15, tpm: 1000000, rpd: 1500 };
-    case 'gemini-1.5-pro':
-      return { rpm: 2, tpm: 32000, rpd: 50 };
-    default:
-      return defaultLimits;
-  }
-};
 
 type UsageStats = {
   rpm: { current: number; limit: number; percentage: number };
@@ -54,6 +26,9 @@ export default function ApiUsageStats() {
   const { thinkingModel } = useSettingStore();
   const [stats, setStats] = useState<UsageStats | null>(null);
   const [refreshCounter, setRefreshCounter] = useState(0);
+  const [isExhausted, setIsExhausted] = useState(false);
+  const [isUnavailable, setIsUnavailable] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   // Refresh stats once per minute
   useEffect(() => {
@@ -66,10 +41,16 @@ export default function ApiUsageStats() {
   // Calculate stats
   useEffect(() => {
     if (!thinkingModel) return;
-    
-    // Get the limits for current model
-    const limits = getModelLimits(thinkingModel);
-    
+
+    // Get the limits for current model from the rate limiter
+    const limits = rateLimiter.getModelLimits(thinkingModel);
+
+    // Check exhausted, unavailable, and cooldown status
+    setIsExhausted(rateLimiter.isModelExhausted(thinkingModel));
+    setIsUnavailable(rateLimiter.isModelDeprecated(thinkingModel));
+    const remaining = rateLimiter.getCooldownTimeRemaining(thinkingModel);
+    setCooldownRemaining(remaining);
+
     // Initialize request counts if not exist
     if (!requestCounts[thinkingModel]) {
       requestCounts[thinkingModel] = {
@@ -77,7 +58,7 @@ export default function ApiUsageStats() {
         rpd: 0
       };
     }
-    
+
     // If model is in cooldown, show it's at the limit
     if (rateLimiter.isInCooldown(thinkingModel)) {
       const calculatedStats: UsageStats = {
@@ -87,16 +68,16 @@ export default function ApiUsageStats() {
           percentage: 100
         },
         rpd: {
-          current: requestCounts[thinkingModel].rpd, 
+          current: requestCounts[thinkingModel].rpd,
           limit: limits.rpd,
           percentage: (requestCounts[thinkingModel].rpd / limits.rpd) * 100
         }
       };
-      
+
       setStats(calculatedStats);
       return;
     }
-    
+
     // Otherwise, show current counts (could be 0 if no requests made)
     const calculatedStats: UsageStats = {
       rpm: {
@@ -105,14 +86,14 @@ export default function ApiUsageStats() {
         percentage: (requestCounts[thinkingModel].rpm / limits.rpm) * 100
       },
       rpd: {
-        current: requestCounts[thinkingModel].rpd, 
+        current: requestCounts[thinkingModel].rpd,
         limit: limits.rpd,
         percentage: (requestCounts[thinkingModel].rpd / limits.rpd) * 100
       }
     };
-    
+
     setStats(calculatedStats);
-    
+
   }, [thinkingModel, refreshCounter]);
 
   // Subscribe to the rateLimiter.trackRequest method to update our counts
@@ -163,15 +144,31 @@ export default function ApiUsageStats() {
   if (!stats) return null;
 
   return (
-    <Card>
+    <Card className={isUnavailable ? "border-orange-500" : isExhausted ? "border-red-500" : cooldownRemaining > 0 ? "border-yellow-500" : ""}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center">
           <BarChart3 className="h-4 w-4 mr-2" />
-          API Usage 
+          API Usage
           <span className="ml-1 text-xs text-muted-foreground">({thinkingModel})</span>
         </CardTitle>
         <CardDescription className="text-xs">
-          Free tier limits for the current model
+          {isUnavailable ? (
+            <span className="text-orange-500 flex items-center">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Model unavailable - update in settings
+            </span>
+          ) : isExhausted ? (
+            <span className="text-red-500 flex items-center">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Quota exhausted - try a different model
+            </span>
+          ) : cooldownRemaining > 0 ? (
+            <span className="text-yellow-600">
+              Cooling down: {cooldownRemaining}s remaining
+            </span>
+          ) : (
+            "Free tier limits for the current model"
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -185,7 +182,7 @@ export default function ApiUsageStats() {
             </div>
             <Progress value={stats.rpm.percentage} className="h-1" />
           </div>
-          
+
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span>Requests/day</span>

@@ -30,15 +30,13 @@ export function useModelProvider() {
 
     if (type === "google") {
       // Always use our server proxy to avoid CORS issues
+      // v2.0.43: debug option removed, fetchOptions flattened to headers
       return createGoogleGenerativeAI({
         baseURL: "/api/ai/google/v1beta",
         apiKey: keyToUse,
-        debug: process.env.NODE_ENV === "development", // Enable debug mode in development
-        fetchOptions: {
-          headers: {
-            // Explicitly pass the API key as a header that our backend expects
-            "x-api-key": keyToUse || ""
-          }
+        headers: {
+          // Explicitly pass the API key as a header that our backend expects
+          "x-api-key": keyToUse || ""
         }
       });
     } else {

@@ -12,6 +12,8 @@ import {
   ExternalLink,
   ChevronDown,
   X,
+  Search,
+  FileText,
   Filter,
   BarChart3,
   List,
@@ -63,7 +65,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
-  
+
   // Generate timeline on component mount or when sources/content changes
   useEffect(() => {
     if (sources.length > 0 || mainContent) {
@@ -76,22 +78,22 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
       setTimeline(newTimeline);
     }
   }, [sources, mainContent]);
-  
+
   // Calculate filtered events based on active filters
   const filteredEvents = useMemo(() => {
     if (!timeline) return [];
-    
+
     return timeline.events.filter(event => {
       // Apply category filter
       if (activeFilter !== "all" && event.category !== activeFilter) {
         return false;
       }
-      
+
       // Apply confidence filter
       if (!confidenceFilter[event.confidence]) {
         return false;
       }
-      
+
       // Apply search filter
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
@@ -100,11 +102,11 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
           event.description.toLowerCase().includes(term)
         );
       }
-      
+
       return true;
     });
   }, [timeline, activeFilter, confidenceFilter, searchTerm]);
-  
+
   // Format date for display
   const formatDate = (date: Date): string => {
     return date.toLocaleDateString(undefined, {
@@ -113,7 +115,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
       day: 'numeric'
     });
   };
-  
+
   // Get color for event category
   const getCategoryColor = (category?: string): string => {
     switch (category) {
@@ -128,7 +130,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
-  
+
   // Get icon for confidence level
   const getConfidenceIcon = (confidence: 'high' | 'medium' | 'low') => {
     switch (confidence) {
@@ -137,7 +139,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
       case 'low': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
     }
   };
-  
+
   // Toggle a specific confidence level
   const toggleConfidence = (level: string) => {
     setConfidenceFilter(prev => ({
@@ -145,7 +147,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
       [level]: !prev[level]
     }));
   };
-  
+
   if (!timeline || timeline.events.length === 0) {
     return (
       <Card className="shadow-sm w-full mt-4">
@@ -166,24 +168,24 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
       </Card>
     );
   }
-  
+
   // Create an array of categories with their counts for the filter
   const categories = useMemo(() => {
     const counts: Record<string, number> = { all: timeline.events.length };
-    
+
     timeline.events.forEach(event => {
       const category = event.category || 'general';
       counts[category] = (counts[category] || 0) + 1;
     });
-    
+
     return Object.entries(counts).map(([category, count]) => ({
       id: category,
-      label: category === 'all' ? 'All Events' : 
+      label: category === 'all' ? 'All Events' :
         category.charAt(0).toUpperCase() + category.slice(1),
       count
     }));
   }, [timeline]);
-  
+
   return (
     <Card className="shadow-sm w-full mt-4">
       <CardHeader className="pb-3">
@@ -194,7 +196,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
               {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} from {timeline.startDate.toLocaleDateString()} to {timeline.endDate.toLocaleDateString()}
             </CardDescription>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <div className="relative">
               <Input
@@ -215,7 +217,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
                 </Button>
               )}
             </div>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1 h-9">
@@ -255,7 +257,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             <Button
               variant="outline"
               size="icon"
@@ -276,17 +278,16 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
             </Button>
           </div>
         </div>
-        
+
         <div className="flex flex-wrap gap-2 mt-3">
           {categories.map(category => (
             <Badge
               key={category.id}
               variant="outline"
-              className={`cursor-pointer ${
-                activeFilter === category.id
+              className={`cursor-pointer ${activeFilter === category.id
                   ? getCategoryColor(category.id)
                   : 'hover:bg-muted'
-              }`}
+                }`}
               onClick={() => setActiveFilter(category.id)}
             >
               {category.label} ({category.count})
@@ -294,7 +295,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
           ))}
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {filteredEvents.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -309,7 +310,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
                     <CalendarDays className="h-5 w-5 text-muted-foreground" />
                     <div className="h-full w-px bg-muted mx-auto mt-1"></div>
                   </div>
-                  
+
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <time className="text-sm text-muted-foreground font-medium">
@@ -333,28 +334,28 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
                         </TooltipProvider>
                       </div>
                     </div>
-                    
+
                     <h3 className="text-base font-medium mt-1">
                       {event.title}
                     </h3>
-                    
+
                     <p className="text-sm mt-2 text-muted-foreground">
                       {event.description}
                     </p>
-                    
+
                     {event.conflicts && event.conflicts.length > 0 && (
                       <div className="mt-2 text-xs flex items-center gap-1 text-orange-600">
                         <AlertTriangle className="h-3 w-3" />
                         <span>Conflicting information detected</span>
                       </div>
                     )}
-                    
+
                     {event.sourceUrl && (
                       <div className="mt-3 flex items-center text-xs text-muted-foreground">
                         <ExternalLink className="h-3 w-3 mr-1" />
-                        <a 
-                          href={event.sourceUrl} 
-                          target="_blank" 
+                        <a
+                          href={event.sourceUrl}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="hover:underline truncate max-w-xs"
                         >
@@ -384,21 +385,21 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
                     {getConfidenceIcon(event.confidence)}
                   </div>
                 </div>
-                
+
                 <h3 className="text-base font-medium">
                   {event.title}
                 </h3>
-                
+
                 <p className="text-sm mt-2 text-muted-foreground flex-1 line-clamp-3">
                   {event.description}
                 </p>
-                
+
                 {event.sourceUrl && (
                   <div className="mt-3 flex items-center text-xs text-muted-foreground">
                     <ExternalLink className="h-3 w-3 mr-1" />
-                    <a 
-                      href={event.sourceUrl} 
-                      target="_blank" 
+                    <a
+                      href={event.sourceUrl}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="hover:underline truncate max-w-xs"
                     >
@@ -411,7 +412,7 @@ export default function TimelineVisualizer({ sources, mainContent }: TimelineVis
           </div>
         )}
       </CardContent>
-      
+
       <CardFooter className="border-t pt-4 flex justify-between">
         <p className="text-xs text-muted-foreground">
           Timeline automatically generated from source content. Events marked with lower confidence may need verification.

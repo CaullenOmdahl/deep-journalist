@@ -37,6 +37,7 @@
     },
     "finalReport": {
       "title": "4. 最终报告",
+      "emptyTitle": "您的报告",
       "emptyTip": "等待数据汇总...",
       "researchedInfor": "已研究 {{total}} 个网站"
     },

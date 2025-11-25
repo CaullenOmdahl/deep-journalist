@@ -38,12 +38,8 @@ export default function WordCountIndicator({
       setWordCount(0);
       setStatus("under");
       setPercentageComplete(0);
-      console.log("No content to count");
       return;
     }
-
-    console.log("Content length before stripping:", contentToCount.length);
-    console.log("Content first 50 chars:", contentToCount.substring(0, 50));
 
     // Better markdown stripping for more accurate word count
     const strippedContent = contentToCount
@@ -57,20 +53,12 @@ export default function WordCountIndicator({
       .replace(/~~.*?~~/g, (match) => match.slice(2, -2)) // Remove strikethrough but keep text
       .replace(/>\s.*?\n/g, ""); // Remove blockquotes
 
-    console.log("Content length after stripping:", strippedContent.length);
-    
     // More accurate word counting that ignores markdown symbols
     const words = strippedContent
       .split(/\s+/)
       .filter(word => word.length > 0 && !/^[*#>-]+$/.test(word));
-    
-    console.log("Total words found:", words.length);
-    if (words.length < 10) {
-      console.log("Words:", words);
-    }
-    
+
     const count = words.length;
-    console.log("Word count calculated:", count, "from content length:", contentToCount.length);
     setWordCount(count);
 
     // Find the limits based on article type with fallback
